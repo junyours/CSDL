@@ -66,8 +66,11 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::post('/event-attendances', [EventAttendanceController::class, 'store']);
     Route::get('/event-attendances', [EventAttendanceController::class, 'index']);
+    Route::get('/student-sanctions', [EventAttendanceController::class, 'getStudentSanctionsAPI']);
 
+    Route::get('/event-sanction-settlements', [EventSanctionSettlementController::class, 'index']);
     Route::post('/event-sanction-settlements', [EventSanctionSettlementController::class, 'store']);
+    Route::post('/event-sanction-settlements/update', [EventSanctionSettlementController::class, 'update']);
 
     Route::get('/user-student-councils', [UserStudentCouncilController::class, 'index']);
     Route::post('/user-student-councils', [UserStudentCouncilController::class, 'store']);

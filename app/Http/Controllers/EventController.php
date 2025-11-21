@@ -507,11 +507,10 @@ class EventController extends Controller
                     $checkpointCounts[$cp]['absent']++;
                 }
 
-                // Format attended_at to Asia/Manila if present
                 $attendedAt = null;
+
                 if (!empty($found['attended_at'])) {
-                    $attendedAt = Carbon::parse($found['attended_at'], 'UTC')
-                        ->setTimezone('Asia/Manila')
+                    $attendedAt = Carbon::parse($found['attended_at'])
                         ->format('h:i:s A'); // 12-hour format with seconds
                 }
 
@@ -555,7 +554,6 @@ class EventController extends Controller
             'checkpoint_counts' => $checkpointCounts
         ]);
     }
-
 
 
 

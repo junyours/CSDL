@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class EventSanctionSettlement extends Model
 {
     protected $fillable = [
+        'transaction_code',
         'event_id',
         'user_id_no',
         'sanction_id',
@@ -17,6 +18,8 @@ class EventSanctionSettlement extends Model
         'settlement_logged_by',
         'status',
         'remarks',
+        'transaction_date_time',
+        'is_void'
     ];
 
     public function sanction()
@@ -29,17 +32,8 @@ class EventSanctionSettlement extends Model
         return $this->belongsTo(Event::class);
     }
 
-    protected static function boot()
+    public function loggedBy()
     {
-        parent::boot();
-
-        static::creating(function ($model) {
-            // Generate a unique 8-digit numeric ID
-            do {
-                $id = str_pad(mt_rand(1, 99999999), 8, '0', STR_PAD_LEFT);
-            } while (self::where('id', $id)->exists());
-
-            $model->id = $id;
-        });
+        return $this->belongsTo(UserStudentCouncil::class, 'settlement_logged_by');
     }
 }

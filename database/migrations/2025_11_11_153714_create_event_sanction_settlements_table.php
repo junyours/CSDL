@@ -11,20 +11,25 @@ return new class extends Migration {
     public function up(): void
     {
         Schema::create('event_sanction_settlements', function (Blueprint $table) {
-            $table->string('id', 8)->primary();
+            $table->id();
+
+            $table->string('transaction_code');
             $table->foreignId('event_id')->constrained('events');
             $table->string('user_id_no');
 
             $table->foreignId('sanction_id')->constrained('sanctions');
-            $table->enum('settlement_type', ['monetary', 'service']);
+            $table->enum('settlement_type', ['monetary', 'service', 'waived']);
 
-            $table->decimal('amount_paid', 10, 2)->nullable(); // for monetary
-            $table->integer('service_completed')->nullable(); // in minutes/hours
+            $table->decimal('amount_paid', 10, 2)->nullable();
+            $table->integer('service_completed')->nullable();
             $table->enum('service_time_type', ['minutes', 'hours'])->nullable();
 
-            $table->string('settlement_logged_by'); //user_id_no in users table
-            $table->enum('status', ['partial', 'pending', 'settled', 'waived'])->default('pending');
+            $table->foreignId('settlement_logged_by')->constrained('user_student_councils');
+            $table->enum('status', ['settled', 'waived'])->default('settled');
             $table->text('remarks')->nullable();
+
+            $table->dateTime('transaction_date_time');
+
             $table->timestamps();
         });
     }

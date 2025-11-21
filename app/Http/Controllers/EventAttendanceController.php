@@ -58,7 +58,8 @@ class EventAttendanceController extends Controller
         $attendances = $filteredQuery->orderBy('attended_at', 'desc')->paginate($perPage);
 
         // === EVENT SANCTION SETTLEMENTS ===
-        $settlementsQuery = EventSanctionSettlement::where('event_id', $eventId);
+        $settlementsQuery = EventSanctionSettlement::where('event_id', $eventId)
+            ->where('is_void', 0);
 
         if ($request->filled('user_id_no')) {
             $settlementsQuery->where('user_id_no', $request->user_id_no);
@@ -323,6 +324,219 @@ class EventAttendanceController extends Controller
         //
     }
 
+    public function getStudentSanctionsAPI(Request $request)
+    {
+        // ==========================================================
+        // 1. Validate and normalize input
+        // ==========================================================
+        $userIdNos = $request->query('user_id_no', []);
+
+        if (is_string($userIdNos)) {
+            $userIdNos = [$userIdNos];
+        }
+
+        if (empty($userIdNos) || !is_array($userIdNos)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'user_id_no[] is required.',
+                'data' => []
+            ], 400);
+        }
+
+        // ==========================================================
+        // 2. Validate user existence in users table
+        // ==========================================================
+        $validUsers = User::whereIn('user_id_no', $userIdNos)
+            ->pluck('user_id_no')
+            ->toArray();
+
+        if (empty($validUsers)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Provided user_id_no(s) do not exist in the system.',
+                'data' => []
+            ], 404);
+        }
+
+        // Only allow valid users to continue (prevents useless API calls)
+        $userIdNos = $validUsers;
+
+
+        // ==========================================================
+        // 3. Fetch Enrollment API
+        // ==========================================================
+        $response = Http::withToken(env('API_ENROLLMENT_SYSTEM_TOKEN'))
+            ->get(env('API_ENROLLMENT_SYSTEM_URL') . '/api/student-enrollment', [
+                'user_id_no' => $userIdNos
+            ]);
+
+        if (!$response->successful()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to fetch enrollment data.',
+                'data' => []
+            ], 500);
+        }
+
+        $payloads = $response->json();
+
+        if (empty($payloads)) {
+            return response()->json([
+                'success' => true,
+                'message' => 'No enrollments found.',
+                'data' => []
+            ]);
+        }
+
+        // ==========================================================
+        // 4. Extract conditions needed to match events
+        // ==========================================================
+        $conditions = [];
+
+        foreach ($payloads as $payload) {
+            if (empty($payload['enrolled_students']))
+                continue;
+
+            foreach ($payload['enrolled_students'] as $enroll) {
+                $ys = $enroll['year_section'];
+
+                $conditions[] = [
+                    'school_year' => $ys['school_year']['id'],
+                    'course_id' => $ys['course']['id'],
+                    'year_level' => $ys['year_level']['id'],
+                ];
+            }
+        }
+
+        if (empty($conditions)) {
+            return response()->json([
+                'success' => true,
+                'message' => 'No enrollments found.',
+                'data' => []
+            ]);
+        }
+
+
+        // ==========================================================
+        // 5. Exclude events already settled by this user
+        // ==========================================================
+        $settledEventIds = EventSanctionSettlement::whereIn('user_id_no', $userIdNos)
+            ->where('is_void', 0) // only consider non-voided settlements
+            ->pluck('event_id')
+            ->toArray();
+
+
+        // ==========================================================
+        // 6. Fetch events that match enrollment AND not settled
+        // ==========================================================
+        $query = Event::where('is_cancelled', 0)
+            ->where('status', 1)
+            ->whereNotIn('id', $settledEventIds) // << EXCLUDE already settled
+            ->with(['location', 'sanction', 'attendances']);
+
+        $query->where(function ($q) use ($conditions) {
+            foreach ($conditions as $cond) {
+                $q->orWhere(function ($sub) use ($cond) {
+                    $sub->where('school_year_id', $cond['school_year'])
+                        ->whereJsonContains('participant_course_id', $cond['course_id'])
+                        ->whereJsonContains('participant_year_level_id', $cond['year_level']);
+                });
+            }
+        });
+
+        $events = $query->orderByDesc('event_date')
+            ->orderByDesc('created_at')
+            ->get()
+            ->unique('id')
+            ->values();
+
+
+        // ==========================================================
+        // 7. Prepare Totals
+        // ==========================================================
+        $totalMonetary = 0;
+        $totalServiceTime = 0;
+
+        $userId = $userIdNos[0]; // the system seems to support only 1 user at a time
+
+
+        // ==========================================================
+        // 8. Map event + calculate sanctions
+        // ==========================================================
+        $events = $events->map(function ($event) use ($userId, &$totalMonetary, &$totalServiceTime) {
+
+            // Determine required checkpoints
+            $required = [];
+
+            if ($event->attendance_type === 'single') {
+                if ($event->start_time)
+                    $required[] = 'start_time';
+                if ($event->end_time)
+                    $required[] = 'end_time';
+            } else {
+                if ($event->first_start_time)
+                    $required[] = 'first_start_time';
+                if ($event->first_end_time)
+                    $required[] = 'first_end_time';
+                if ($event->second_start_time)
+                    $required[] = 'second_start_time';
+                if ($event->second_end_time)
+                    $required[] = 'second_end_time';
+            }
+
+            // Fetch attendance
+            $attended = $event->attendances
+                ->where('user_id_no', $userId)
+                ->pluck('checkpoint')
+                ->toArray();
+
+            // Identify missing checkpoints
+            $missing = array_values(array_diff($required, $attended));
+
+            $sanctionApplied = null;
+
+            if (count($missing) > 0 && $event->sanction) {
+                $sanctionApplied = $event->sanction;
+                $missingCount = count($missing);
+
+                // Monetary
+                if ($event->sanction->sanction_type === 'monetary') {
+                    $totalMonetary += floatval($event->sanction->monetary_amount) * $missingCount;
+                }
+
+                // Service Time
+                if ($event->sanction->sanction_type === 'service') {
+                    $service = $event->sanction;
+                    $units = $service->service_time * $missingCount;
+
+                    $totalServiceTime += $service->service_time_type === 'hours'
+                        ? $units * 60
+                        : $units;
+                }
+            }
+
+            return [
+                'event' => $event,
+                'required_checkpoints' => $required,
+                'attended_checkpoints' => $attended,
+                'missing_checkpoints' => $missing,
+                'sanction_applied' => $sanctionApplied,
+            ];
+        });
+
+
+        // ==========================================================
+        // 9. Response
+        // ==========================================================
+        return response()->json([
+            'success' => true,
+            'message' => 'Events fetched successfully.',
+            'total_monetary' => $totalMonetary,
+            'total_service_minutes' => $totalServiceTime,
+            'data' => $events
+        ]);
+    }
+
 
     private function emptyCheckpoints($attendanceType)
     {
@@ -414,12 +628,6 @@ class EventAttendanceController extends Controller
         $attendances->getCollection()->transform(function ($attendance) {
             $attendance->location = $attendance->location_coordinates;
             unset($attendance->location_coordinates);
-
-            if ($attendance->attended_at) {
-                $attendance->attended_at = Carbon::parse($attendance->attended_at, 'UTC')
-                    ->setTimezone('Asia/Manila')
-                    ->format('Y-m-d H:i:s');
-            }
 
             return $attendance;
         });

@@ -210,12 +210,17 @@ class UserStudentCouncilController extends Controller
     {
         $user_id_no = $request->query('user_id_no');
 
-        $exists = DB::table('users')
+        $record = DB::table('users')
             ->join('user_student_councils', 'users.id', '=', 'user_student_councils.user_id')
             ->where('users.user_id_no', $user_id_no)
             ->where('user_student_councils.is_removed', 0)
-            ->exists();
+            ->select('user_student_councils.id')
+            ->first();
 
-        return response()->json(['is_council_member' => $exists]);
+        return response()->json([
+            'is_council_member' => $record ? true : false,
+            'user_student_council_id' => $record?->id ?? null,
+        ]);
     }
+
 }

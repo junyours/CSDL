@@ -42,4 +42,15 @@ class Event extends Model
     {
         return $this->belongsTo(Sanction::class);
     }
+
+    public function attendances()
+    {
+        return $this->hasMany(EventAttendance::class);
+    }
+
+    public function sanctionSettlements()
+    {
+        return $this->hasMany(EventSanctionSettlement::class, 'event_id', 'id');
+    }
+
 }

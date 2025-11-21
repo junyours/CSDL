@@ -126,7 +126,14 @@
                         data.data.attendances.forEach(a => {
                             const label = checkpointLabels[a.checkpoint] || a.checkpoint;
 
-                            const time = new Date(a.attended_at).toLocaleTimeString('en-US', {
+                            const [hours, minutes, seconds] = a.attended_at.split(':');
+
+                            const date = new Date();
+                            date.setHours(parseInt(hours));
+                            date.setMinutes(parseInt(minutes));
+                            date.setSeconds(parseInt(seconds));
+
+                            const time = date.toLocaleTimeString('en-US', {
                                 hour: 'numeric',
                                 minute: '2-digit',
                                 second: '2-digit',
