@@ -10,6 +10,7 @@ use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Str;
 use Validator;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class EventSanctionSettlementController extends Controller
 {
@@ -56,7 +57,7 @@ class EventSanctionSettlementController extends Controller
             'voided_data' => $voidedSettlements,
             'summary' => [
                 'total_amount_paid' => $totalAmountPaid,
-                'total_transactions' => $totalTransactions, 
+                'total_transactions' => $totalTransactions,
                 'voided_transactions_count' => $voidedTransactionsCount,
             ],
         ]);
@@ -72,11 +73,24 @@ class EventSanctionSettlementController extends Controller
         //
     }
 
+
+
     /**
      * Store a newly created resource in storage.
      */
     public function store(Request $request): JsonResponse
     {
+
+        function generateUniqueTransactionCode(): string
+        {
+            do {
+                $code = strtoupper(Str::random(12));
+                $exists = EventSanctionSettlement::where('transaction_code', $code)->exists();
+            } while ($exists);
+
+            return $code;
+        }
+
         $payload = $request->all();
 
         // Decide whether bulk or single
@@ -90,7 +104,7 @@ class EventSanctionSettlementController extends Controller
             $created = [];
 
             // Generate ONE transaction code for this bulk transaction
-            $transactionCode = strtoupper(Str::random(12));
+            $transactionCode = generateUniqueTransactionCode();
 
             DB::beginTransaction();
             try {
@@ -207,7 +221,7 @@ class EventSanctionSettlementController extends Controller
         }
 
         // Generate its own transaction_code
-        $transactionCode = strtoupper(Str::random(12));
+        $transactionCode = generateUniqueTransactionCode();
 
         $settlement = EventSanctionSettlement::create([
             'transaction_code' => $transactionCode,   // <── ADDED
@@ -283,4 +297,75 @@ class EventSanctionSettlementController extends Controller
     {
         //
     }
+    public function generateReport(Request $request)
+    {
+        $councilId = $request->settlement_logged_by;
+        $councilName = $request->settlement_logged_name; // <-- received from frontend
+        $departmentName = $request->department_name;     // <-- received from frontend
+
+        $settlements = EventSanctionSettlement::where('settlement_logged_by', $councilId)
+            ->whereDate('transaction_date_time', now())
+            ->get();
+
+        $active = $settlements->where('is_void', 0);
+        $voided = $settlements->where('is_void', 1);
+
+        $pdf = Pdf::loadView('reports.council-report', [
+            'settlements' => $settlements,
+            'active' => $active,
+            'voided' => $voided,
+            'summary' => [
+                'total_amount_paid' => $active->sum('amount_paid'),
+                'total_transactions' => $settlements->unique('transaction_code')->count(),
+                'voided_transactions_count' => $voided->unique('transaction_code')->count(),
+            ],
+            'department_name' => $departmentName,
+            'council_member_name' => $councilName,
+        ]);
+
+        $fileName = 'council_report_' . time() . '.pdf';
+        $path = storage_path('app/public/reports/' . $fileName);
+
+        file_put_contents($path, $pdf->output());
+
+        return response()->json([
+            'file_url' => url('storage/reports/' . $fileName)
+        ]);
+    }
+    
+
+    public function getUserSettlements(Request $request)
+    {
+        $userIdNo = $request->query('user_id_no');
+
+        if (!$userIdNo) {
+            return response()->json([
+                'message' => 'user_id_no is required'
+            ], 400);
+        }
+
+        $settlements = DB::table('event_sanction_settlements as ess')
+            ->join('events as e', 'ess.event_id', '=', 'e.id')
+            ->join('user_student_councils as usc', 'ess.settlement_logged_by', '=', 'usc.id')
+            ->join('users as u', 'usc.user_id', '=', 'u.id')
+            ->where('ess.user_id_no', $userIdNo)
+            ->select(
+                'ess.id',
+                'ess.transaction_code',
+                'ess.user_id_no',
+                'ess.amount_paid',
+                'ess.status',
+                'ess.transaction_date_time',
+                'ess.is_void',
+                'e.event_name',
+                'u.user_id_no as settlement_logged_by_user_id_no'
+            )
+            ->orderBy('ess.transaction_date_time', 'desc')
+            ->get();
+
+        return response()->json([
+            'data' => $settlements
+        ]);
+    }
+
 }

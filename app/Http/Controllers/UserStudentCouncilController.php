@@ -2,7 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\EventSanctionSettlement;
 use App\Models\UserStudentCouncil;
+use Barryvdh\DomPDF\Facade\Pdf;
+use Carbon\Carbon;
 use DB;
 use Http;
 use Illuminate\Http\Request;
@@ -223,4 +226,58 @@ class UserStudentCouncilController extends Controller
         ]);
     }
 
+    public function generateReportDateRange(Request $request)
+    {
+        $request->validate([
+            'settlement_logged_by' => 'required',
+            'settlement_logged_name' => 'required',
+            'department_name' => 'required',
+            'start_date' => 'required|date',
+            'end_date' => 'required|date',
+        ]);
+
+        $councilId = $request->settlement_logged_by;
+        $councilName = $request->settlement_logged_name;
+        $departmentName = $request->department_name;
+
+        // Normalize date range
+        $start = Carbon::parse($request->start_date)->startOfDay();
+        $end = Carbon::parse($request->end_date)->endOfDay();
+
+        // Fetch settlements within date range
+        $settlements = EventSanctionSettlement::where('settlement_logged_by', $councilId)
+            ->whereBetween('transaction_date_time', [$start, $end])
+            ->get();
+
+        $active = $settlements->where('is_void', 0);
+        $voided = $settlements->where('is_void', 1);
+
+        $pdf = Pdf::loadView('reports.csdl-council-report', [
+            'settlements' => $settlements,
+            'active' => $active,
+            'voided' => $voided,
+            'summary' => [
+                'total_amount_paid' => $active->sum('amount_paid'),
+                'total_transactions' => $settlements->unique('transaction_code')->count(),
+                'voided_transactions_count' => $voided->unique('transaction_code')->count(),
+            ],
+            'department_name' => $departmentName,
+            'council_member_name' => $councilName,
+
+            // Pass date range to PDF view if needed
+            'date_range' => [
+                'start' => $start->toFormattedDateString(),
+                'end' => $end->toFormattedDateString(),
+            ],
+        ]);
+
+        $fileName = 'council_report_range_' . time() . '.pdf';
+        $path = storage_path('app/public/reports/' . $fileName);
+
+        file_put_contents($path, $pdf->output());
+
+        return response()->json([
+            'file_url' => url('storage/reports/' . $fileName)
+        ]);
+    }
 }

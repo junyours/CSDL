@@ -51,6 +51,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/events', [EventController::class, 'store']);
     Route::get('/my-events', [EventController::class, 'getStudentEventsAPI']);
     Route::get('/event-participants/{id}', [EventController::class, 'getEventParticipants']);
+    Route::get('/event-report/{eventId}', [EventController::class, 'generateReport']);
 
 
     // Route::get('/announcements', [PostAnnouncementController::class, 'index']);
@@ -71,13 +72,15 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/event-sanction-settlements', [EventSanctionSettlementController::class, 'index']);
     Route::post('/event-sanction-settlements', [EventSanctionSettlementController::class, 'store']);
     Route::post('/event-sanction-settlements/update', [EventSanctionSettlementController::class, 'update']);
+    Route::get('/generate-report', [EventSanctionSettlementController::class, 'generateReport']);
+    Route::get('/my-settlement-transactions', [EventSanctionSettlementController::class, 'getUserSettlements']);
 
     Route::get('/user-student-councils', [UserStudentCouncilController::class, 'index']);
     Route::post('/user-student-councils', [UserStudentCouncilController::class, 'store']);
     Route::get('/search-user', [UserStudentCouncilController::class, 'searchUsers']);
     Route::delete('/user-student-councils/{id}', [UserStudentCouncilController::class, 'destroy']);
     Route::get('/check-student-council', [UserStudentCouncilController::class, 'checkMembership']);
-
+    Route::post('/generate-report-range', [UserStudentCouncilController::class, 'generateReportDateRange']);
 
     // other protected APIs...
 });

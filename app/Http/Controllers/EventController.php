@@ -7,6 +7,7 @@ use App\Models\EventAttendance;
 use App\Models\Location;
 use App\Models\Sanction;
 use App\Models\User;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -555,6 +556,46 @@ class EventController extends Controller
         ]);
     }
 
+    public function generateReport($eventId)
+    {
+        $event = Event::with(['location', 'sanction'])->findOrFail($eventId);
+
+        $participantData = app(EventController::class)
+            ->getEventParticipants($eventId, request())
+            ->getData();
+
+        if (!$participantData->success) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Cannot generate report.'
+            ], 400);
+        }
+
+        $pdf = Pdf::loadView('reports.event-report', [
+            'event' => $event,
+            'data' => $participantData
+        ]);
+
+        // Create unique filename using timestamp
+        $timestamp = now()->format('Ymd_His'); // e.g., 20251122_203045
+        $fileName = "event-report-{$eventId}-{$timestamp}.pdf";
+        $filePath = storage_path("app/public/reports/{$fileName}");
+
+        // Ensure directory exists
+        if (!file_exists(dirname($filePath))) {
+            mkdir(dirname($filePath), 0755, true);
+        }
+
+        $pdf->save($filePath);
+
+        // Return file URL for download
+        $fileUrl = asset("storage/reports/{$fileName}");
+
+        return response()->json([
+            'success' => true,
+            'file_url' => $fileUrl
+        ]);
+    }
 
 
 
