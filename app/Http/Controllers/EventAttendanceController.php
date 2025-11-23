@@ -175,7 +175,7 @@ class EventAttendanceController extends Controller
 
                 if (!$isInside) {
                     $distance = $this->minDistanceToPolygon($point, $polygon);
-                    if ($distance > 30) {
+                    if ($distance > 70) {
                         return response()->json([
                             'message' => "Can't record attendance right now, you are " . round($distance) . " meters away from event location."
                         ], 403);
