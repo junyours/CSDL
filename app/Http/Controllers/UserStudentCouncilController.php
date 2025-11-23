@@ -80,7 +80,7 @@ class UserStudentCouncilController extends Controller
 
         // Create new council entry
         $newData = UserStudentCouncil::create([
-            'user_id' => $userId,     // ✔ save the correct users.id
+            'user_id' => $userId,
             'position' => $request->position,
         ]);
 

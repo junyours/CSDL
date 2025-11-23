@@ -1,6 +1,8 @@
 <?php
 namespace App\Http\Controllers;
 
+use App\Models\EventAttendanceModeConfig;
+use App\Models\UserModerator;
 use Auth;
 use Illuminate\Http\Request;
 use App\Models\User;
@@ -68,12 +70,26 @@ class AuthController extends Controller
         $user = User::where('user_id_no', $request->user_id_no)->first();
 
         if (!$user || !Hash::check($request->password, $user->password)) {
-            return response()->json([
-                'message' => 'Invalid credentials'
-            ], 401);
+            return response()->json(['message' => 'Invalid credentials'], 401);
         }
 
-        // create token (Sanctum personal access token)
+        // Check strict mode if user is a student
+        if ($user->user_role === 'student') {
+            $strictMode = EventAttendanceModeConfig::latest()->first()?->is_strict_mode ?? 0;
+
+            if ($strictMode) {
+                $moderator = UserModerator::where('user_id', $user->id)
+                    ->where('is_removed', false)
+                    ->first();
+
+                if (!$moderator) {
+                    return response()->json([
+                        'message' => 'You are not allowed to login in strict mode'
+                    ], 403);
+                }
+            }
+        }
+
         $token = $user->createToken('mobile-token')->plainTextToken;
 
         return response()->json([

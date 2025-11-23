@@ -1,21 +1,41 @@
 <?php
 
 use App\Http\Controllers\ApiEnrollmentSystemController;
-use App\Http\Controllers\AttendanceAnomalyController;
 use App\Http\Controllers\EventAttendanceController;
 use App\Http\Controllers\EventController;
 use App\Http\Controllers\EventSanctionSettlementController;
-use App\Http\Controllers\PostAnnouncementController;
 use App\Http\Controllers\SanctionController;
 use App\Http\Controllers\UserFaceController;
+use App\Http\Controllers\UserModeratorController;
 use App\Http\Controllers\UserStudentCouncilController;
 use App\Http\Controllers\ViolationController;
+use App\Models\EventAttendanceModeConfig;
+use App\Models\UserModerator;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\UserInformationController;
 use App\Http\Controllers\LocationController;
+use Illuminate\Http\Request;
 
 Route::post('/login', [AuthController::class, 'login']);
+
+Route::middleware('auth:sanctum')->get('/check-strict-mode', function (Request $request) {
+    $user = $request->user();
+
+    if ($user->user_role !== 'student')
+        return response()->json(['allowed' => true]);
+
+    $strictMode = EventAttendanceModeConfig::latest()->first()?->is_strict_mode ?? 0;
+
+    if (!$strictMode)
+        return response()->json(['allowed' => true]);
+
+    $moderator = UserModerator::where('user_id', $user->id)
+        ->where('is_removed', false)
+        ->first();
+
+    return response()->json(['allowed' => (bool) $moderator]);
+});
 
 // Protected routes
 Route::middleware('auth:sanctum')->group(function () {
@@ -82,5 +102,33 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/check-student-council', [UserStudentCouncilController::class, 'checkMembership']);
     Route::post('/generate-report-range', [UserStudentCouncilController::class, 'generateReportDateRange']);
 
+    Route::get('/user-moderators', [UserModeratorController::class, 'index']);
+    Route::post('/user-moderators', [UserModeratorController::class, 'store']);
+    Route::patch('/user-moderators/{userModerator}', [UserModeratorController::class, 'update']);
+    Route::delete('/user-moderators/{userModerator}', [UserModeratorController::class, 'destroy']);
+
     // other protected APIs...
+    Route::get('/moderator/strict-mode', function () {
+        $config = EventAttendanceModeConfig::first();
+        return response()->json([
+            'is_strict_mode' => $config?->is_strict_mode ?? false
+        ]);
+    });
+
+    Route::post('/moderator/strict-mode', function (Request $request) {
+        $request->validate([
+            'is_strict_mode' => 'required|boolean',
+        ]);
+
+        $config = EventAttendanceModeConfig::first();
+        if (!$config)
+            return response()->json(['message' => 'Config not found'], 404);
+
+        $config->is_strict_mode = $request->is_strict_mode;
+        $config->save();
+
+        return response()->json([
+            'is_strict_mode' => (bool) $config->is_strict_mode
+        ]);
+    });
 });

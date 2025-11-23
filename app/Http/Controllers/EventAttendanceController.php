@@ -432,6 +432,7 @@ class EventAttendanceController extends Controller
         $query = Event::where('is_cancelled', 0)
             ->where('status', 1)
             ->whereNotIn('id', $settledEventIds) // << EXCLUDE already settled
+            ->whereDate('event_date', '<=', now()) // << EXCLUDE future events
             ->with(['location', 'sanction', 'attendances']);
 
         $query->where(function ($q) use ($conditions) {
