@@ -552,6 +552,10 @@ class EventAttendanceController extends Controller
             ];
         });
 
+        $events = $events->filter(function ($e) {
+            return count($e['missing_checkpoints']) > 0;
+        })->values();
+
 
         // ==========================================================
         // 9. Response
