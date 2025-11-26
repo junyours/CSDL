@@ -59,7 +59,7 @@ class UserInformationController extends Controller
 
         try {
             // Send credentials via email
-            Mail::to($validated['email_address'])->queue(
+            Mail::to($validated['email_address'])->send(
                 new SendUserCredentialsMail($user->user_id_no, $name, $password, $appLink)
             );
         } catch (\Exception $e) {

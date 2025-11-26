@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Event;
 use App\Models\EventAttendance;
 use App\Models\Location;
+use App\Models\Notification;
 use App\Models\Sanction;
 use App\Models\User;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -124,7 +125,6 @@ class EventController extends Controller
 
             'attendance_type' => ['required', Rule::in(['single', 'double'])],
 
-            // conditional validation
             'start_time' => 'required_if:attendance_type,single|date_format:H:i',
             'end_time' => 'required_if:attendance_type,single|date_format:H:i|after:start_time',
 
@@ -169,13 +169,32 @@ class EventController extends Controller
 
             'attendance_duration' => $validated['attendance_duration'],
 
-            // Store as arrays, not encoded strings
             'participant_course_id' => $validated['participant_course_id'],
             'participant_year_level_id' => $validated['participant_year_level_id'],
 
             'sanction_id' => $validated['sanction_id'],
         ]);
 
+        /*
+        |--------------------------------------------------------------------------
+        | CREATE NOTIFICATION
+        |--------------------------------------------------------------------------
+        */
+        $location = Location::find($validated['location_id']); // ensure your model exists
+
+        $notifMessage =
+            'Heads up! There will be ' . $validated['event_name'] . ' event on ' .
+            date('F j, Y', strtotime($validated['event_date'])) . ', at ' .
+            ($location ? $location->location_name : 'Unknown Location') .
+            "\n\nCheck your event activities for more info.";
+
+        Notification::create([
+            'courses_id' => $validated['participant_course_id'],
+            'year_levels_id' => $validated['participant_year_level_id'],
+            'notifiable_type' => "New event invitation",
+            'data' => $notifMessage,
+            'created_at' => now()
+        ]);
 
         return response()->json([
             'success' => true,

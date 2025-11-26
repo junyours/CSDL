@@ -4,6 +4,7 @@ use App\Http\Controllers\ApiEnrollmentSystemController;
 use App\Http\Controllers\EventAttendanceController;
 use App\Http\Controllers\EventController;
 use App\Http\Controllers\EventSanctionSettlementController;
+use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\SanctionController;
 use App\Http\Controllers\UserFaceController;
 use App\Http\Controllers\UserModeratorController;
@@ -106,6 +107,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/user-moderators', [UserModeratorController::class, 'store']);
     Route::patch('/user-moderators/{userModerator}', [UserModeratorController::class, 'update']);
     Route::delete('/user-moderators/{userModerator}', [UserModeratorController::class, 'destroy']);
+
+    Route::get('/notifications', [NotificationController::class, 'getUserNotifications']);
+    Route::post('/notifications/mark-read', [NotificationController::class, 'markAsRead']);
 
     // other protected APIs...
     Route::get('/moderator/strict-mode', function () {
