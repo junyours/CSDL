@@ -1,0 +1,5 @@
+const Ziggy = { "url": "http:\/\/localhost:8000", "port": 8000, "defaults": {}, "routes": { "sanctum.csrf-cookie": { "uri": "sanctum\/csrf-cookie", "methods": ["GET", "HEAD"] }, "login": { "uri": "login", "methods": ["GET", "HEAD"] }, "login.attempt": { "uri": "login", "methods": ["POST"] }, "logout": { "uri": "logout", "methods": ["POST"] }, "admin.dashboard": { "uri": "admin\/dashboard", "methods": ["GET", "HEAD"] }, "setup.violation.index": { "uri": "setup-violation", "methods": ["GET", "HEAD"] }, "setup.violation.create": { "uri": "setup\/violation\/create", "methods": ["GET", "HEAD"] }, "setup.violation.store": { "uri": "setup\/violation", "methods": ["POST"] }, "security.dashboard": { "uri": "security\/dashboard", "methods": ["GET", "HEAD"] }, "student.dashboard": { "uri": "dashboard", "methods": ["GET", "HEAD"] }, "storage.local": { "uri": "storage\/{path}", "methods": ["GET", "HEAD"], "wheres": { "path": ".*" }, "parameters": ["path"] } } };
+if (typeof window !== 'undefined' && typeof window.Ziggy !== 'undefined') {
+  Object.assign(Ziggy.routes, window.Ziggy.routes);
+}
+export { Ziggy };

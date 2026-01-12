@@ -1,14 +1,77 @@
 <?php
 
+use App\Http\Controllers\Admin\EventController;
+use App\Http\Controllers\Admin\LocationController;
+use App\Http\Controllers\Admin\SanctionController;
+use App\Http\Controllers\Admin\UserController;
+use App\Http\Controllers\Admin\ViolationController;
 use App\Http\Controllers\AuthController;
-use App\Http\Controllers\EventAttendanceController;
-use App\Http\Controllers\EventController;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\File;
+use Inertia\Inertia;
+use App\Http\Controllers\Auth\LoginController;
+
+// PUBLIC
+Route::get('/login', [LoginController::class, 'show'])->name('login');
+Route::post('/login', [LoginController::class, 'login'])->name('login.attempt');
+
+// AUTH ONLY
+Route::middleware(['auth'])->group(function () {
+
+    Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
+
+    // ADMIN AREA
+    Route::middleware('role:admin')->group(function () {
+        Route::get('/admin/dashboard', function () {
+            return Inertia::render('Admin/Dashboard');
+        })->name('admin.dashboard');
+
+        Route::get('/setup-violation', [ViolationController::class, 'index'])->name('setup.violation.index');
+        Route::get('/setup/violation/create', [ViolationController::class, 'create'])->name('setup.violation.create');
+        Route::post('/setup/violation', [ViolationController::class, 'store'])->name('setup.violation.store');
+        Route::patch('/setup/violation/{violation}', [ViolationController::class, 'update'])->name('setup.violation.update');
+
+        Route::get('/setup-sanction', [SanctionController::class, 'index'])->name('setup.sanction.index');
+        Route::post('/setup/sanction/store', [SanctionController::class, 'store'])->name('setup.sanction.store');
+        Route::patch('/setup/sanction/{sanction}', [SanctionController::class, 'update'])->name('setup.sanction.update');
+
+        Route::get('/setup-location', [LocationController::class, 'index'])->name('setup.location.index');
+        Route::post('/setup/location/store', [LocationController::class, 'store'])->name('setup.location.store');
+        Route::patch('/setup/location/{id}/move-to-bin', [LocationController::class, 'moveToBin']);
+
+        Route::get('/manage-event', [EventController::class, 'index'])->name('manage.event.index');
+        Route::get('/event/create', [EventController::class, 'create'])->name('manage.event.create');
+        Route::post('/event/store', [EventController::class, 'store'])->name('manage.event.store');
+        Route::get('/event/{event}/edit', [EventController::class, 'edit'])->name('manage.event.edit');
+        Route::put('/event/{event}', [EventController::class, 'update'])->name('manage.event.update');
+
+        Route::get('/manage-user', [UserController::class, 'index'])->name('manage.user.index');
+
+    });
+
+    // SECURITY AREA
+    Route::middleware('role:security')->group(function () {
+        Route::get('/security/dashboard', function () {
+            return Inertia::render('Security/Dashboard');
+        })->name('security.dashboard');
+    });
+
+    // STUDENT AREA
+    Route::middleware('role:student')->group(function () {
+        Route::get('/dashboard', function () {
+            return Inertia::render('Student/Dashboard');
+        })->name('student.dashboard');
+    });
+
+});
+
+// Route::get('/', function () {
+//     return view('welcome');
+// });
 
 Route::get('/', function () {
-    return view('welcome');
+    return Inertia::render('WelcomePage'); // Matches resources/js/WelcomePage.jsx
 });
 
 Route::get('/open-app', function (Request $request) {
@@ -40,33 +103,27 @@ Route::get('/open-app', function (Request $request) {
 });
 
 
-Route::get('/test', function () {
-    return response()->json(['message' => 'Hello ESP!']);
-});
+// Route::get('/web-login', [AuthController::class, 'showLoginForm'])->name('login');
+// Route::post('/web-login', [AuthController::class, 'loginWeb'])->name('login.post');
+// Route::post('/web-logout', [AuthController::class, 'logoutWeb'])->name('logout');
+
+// Route::middleware('auth')->group(function () {
+//     Route::get('/dashboard', [AuthController::class, 'dashboard'])->name('dashboard');
+
+//     // List of events
+//     Route::get('/dashboard/events', [EventController::class, 'indexWeb'])->name('dashboard.events');
+
+//     // Manage specific event
+//     Route::get('/dashboard/events/{id}', [EventController::class, 'showWeb'])->name('dashboard.events.show');
+
+//     Route::get('/attendance/search', [EventAttendanceController::class, 'showMyEventAttendanceWeb'])
+//         ->name('attendance.search');
 
 
-
-Route::get('/web-login', [AuthController::class, 'showLoginForm'])->name('login');
-Route::post('/web-login', [AuthController::class, 'loginWeb'])->name('login.post');
-Route::post('/web-logout', [AuthController::class, 'logoutWeb'])->name('logout');
-
-Route::middleware('auth')->group(function () {
-    Route::get('/dashboard', [AuthController::class, 'dashboard'])->name('dashboard');
-
-    // List of events
-    Route::get('/dashboard/events', [EventController::class, 'indexWeb'])->name('dashboard.events');
-
-    // Manage specific event
-    Route::get('/dashboard/events/{id}', [EventController::class, 'showWeb'])->name('dashboard.events.show');
-
-    Route::get('/attendance/search', [EventAttendanceController::class, 'showMyEventAttendanceWeb'])
-        ->name('attendance.search');
-
-
-    Route::get('/qr-scanner', function () {
-        return view('qr-scanner');
-    })->name('qr.scanner');
-});
+//     Route::get('/qr-scanner', function () {
+//         return view('qr-scanner');
+//     })->name('qr.scanner');
+// });
 
 view()->composer('*', function ($view) {
     $apkPath = storage_path('app/public/apk');
