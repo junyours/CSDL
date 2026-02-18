@@ -17,12 +17,16 @@ export default function Register() {
     function submit(e) {
         e.preventDefault();
 
+        const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+
+        if (!dateRegex.test(data.birthdate)) {
+            toast.error("Birthdate must be in YYYY-MM-DD format.");
+            return;
+        }
+
         post('/register', {
             onSuccess: () => {
-                // Reset the form (optional)
                 reset('password');
-
-                // Show success message
                 toast.success('Registration successful! Redirecting...');
             },
             onError: (err) => {
@@ -32,6 +36,7 @@ export default function Register() {
             }
         });
     }
+
 
     return (
         <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 px-4 sm:px-6 lg:px-8">
@@ -104,18 +109,34 @@ export default function Register() {
                                 <label htmlFor="birthdate" className="block text-sm font-medium text-gray-700">
                                     Birthdate
                                 </label>
+
                                 <input
                                     id="birthdate"
                                     type="date"
                                     required
+                                    max={new Date().toISOString().split("T")[0]} // Prevent future dates
                                     value={data.birthdate}
-                                    onChange={e => setData('birthdate', e.target.value)}
-                                    className="mt-1 block w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200"
+                                    onChange={(e) => {
+                                        const value = e.target.value;
+
+                                        // Strict YYYY-MM-DD regex
+                                        const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+
+                                        if (dateRegex.test(value)) {
+                                            setData('birthdate', value);
+                                        }
+                                    }}
+                                    onKeyDown={(e) => e.preventDefault()} // Prevent manual typing
+                                    className="mt-1 block w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm 
+        focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent 
+        transition duration-200"
                                 />
+
                                 {errors.birthdate && (
                                     <p className="mt-1 text-sm text-red-600">{errors.birthdate}</p>
                                 )}
                             </div>
+
 
                             {/* Email */}
                             <div>

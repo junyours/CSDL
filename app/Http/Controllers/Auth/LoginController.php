@@ -66,6 +66,11 @@ class LoginController extends Controller
 
     public function registerShowForm()
     {
+        // If user is already logged in, redirect them based on their role
+        if (Auth::check()) {
+            return $this->redirectBasedOnRole();
+        }
+
         return Inertia::render('Auth/Register');
     }
 
@@ -75,7 +80,11 @@ class LoginController extends Controller
         $request->validate([
             'user_id_no' => 'required|string',
             'last_name' => 'required|string',
-            'birthdate' => 'required|date',
+            'birthdate' => [
+                'required',
+                'date_format:Y-m-d',
+                'before_or_equal:today'
+            ],
             'email' => 'required|email',
             'password' => 'required|string|min:8',
         ]);
@@ -84,7 +93,9 @@ class LoginController extends Controller
         $students = $this->fetchStudentData($request->user_id_no, $sisApi);
 
         if ($students->isEmpty()) {
-            return back()->withErrors(['user_id_no' => 'Student not found in the system.'])->withInput();
+            throw ValidationException::withMessages([
+                'user_id_no' => 'Student not found in the system.'
+            ]);
         }
 
         // Match student with form data and check for current school year
