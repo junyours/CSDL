@@ -10,6 +10,8 @@ export default function DataTable({
     actions,
     searchPlaceholder = "Search...",
     total,
+    // Added exportRoute prop
+    exportRoute = null,
 }) {
     const [searchValue, setSearchValue] = useState(search || "");
 
@@ -34,7 +36,7 @@ export default function DataTable({
     const hasData = data?.data && data.data.length > 0;
 
     return (
-        <div className="bg-white shadow-sm border rounded-lg p-4">
+        <div className="bg-white shadow-sm border rounded-lg p-4 mb-20">
             {/* Search Bar */}
             <div className="flex flex-col sm:flex-row sm:justify-between items-center gap-3 mb-6">
                 <input
@@ -48,6 +50,18 @@ export default function DataTable({
                     }}
                     className="border border-gray-300 px-4 py-2 rounded-md w-full sm:w-80 focus:ring-2 focus:ring-blue-500 focus:outline-none transition"
                 />
+
+                {/* Conditional Export Button */}
+                {exportRoute && (
+                    <button
+                        onClick={() =>
+                            window.location.href = `${exportRoute}?search=${searchValue}`
+                        }
+                        className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition"
+                    >
+                        Export as PDF
+                    </button>
+                )}
             </div>
 
             {/* Table / Cards */}
@@ -132,10 +146,14 @@ export default function DataTable({
                             </div>
 
                             {/* Pagination Buttons */}
-                            <div className="flex items-center gap-1">
+                            <div className="flex items-center gap-1 w-full sm:w-auto justify-center">
                                 {data.links.map((link, i) => {
                                     const isDisabled = !link.url;
                                     const isActive = link.active;
+
+                                    // Logic to hide page numbers on mobile, but keep "Previous" and "Next"
+                                    // link.label usually contains "&laquo; Previous" or "Next &raquo;"
+                                    const isPageNumber = !isNaN(link.label);
 
                                     return (
                                         <button
@@ -143,13 +161,15 @@ export default function DataTable({
                                             disabled={isDisabled}
                                             onClick={() => !isDisabled && handlePaginationClick(link.url)}
                                             className={`
-              px-3 py-2 text-sm rounded-md border transition
-              ${isActive
+                            px-3 py-2 text-sm rounded-md border transition
+                            ${isActive
                                                     ? "bg-blue-600 text-white border-blue-600 shadow-sm"
                                                     : "bg-white text-gray-700 border-gray-300 hover:bg-gray-100"
                                                 }
-              ${isDisabled ? "opacity-40 cursor-not-allowed" : ""}
-            `}
+                            ${isDisabled ? "opacity-40 cursor-not-allowed" : ""}
+                            /* Hide page numbers on extra small screens, show them from 'sm' up */
+                            ${isPageNumber ? "hidden sm:inline-block" : "flex-1 sm:flex-none text-center"}
+                        `}
                                             dangerouslySetInnerHTML={{ __html: link.label }}
                                         />
                                     );
@@ -157,7 +177,6 @@ export default function DataTable({
                             </div>
                         </div>
                     )}
-
                 </>
             ) : (
                 <div className="col-span-full flex flex-col items-center justify-center py-16 text-center">

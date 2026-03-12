@@ -1,86 +1,140 @@
+import React, { useState, useRef } from 'react';
 import { QRCodeCanvas } from 'qrcode.react';
+import { motion } from 'framer-motion';
 
 export default function DigitalID({
-    userIdNo = 'DRAFT-ID-0000',
+    userIdNo = "0000-0-00000",
+    userProfilePhoto = "/assets/images/proper-profile-photo.jpg",
+    studentData = null,
+    userIssue = null,
+    userCreatedAt = null,
 }) {
+
+    const [isFlipped, setIsFlipped] = useState(false);
+
     return (
-        <div className="w-full flex justify-center px-2 sm:px-0">
-            <div className="
-                relative w-full max-w-md
-                rounded-3xl overflow-hidden shadow-2xl
-                bg-gradient-to-br from-[#0f172a] via-[#1e3a8a] to-[#0ea5e9]
-                text-white
-                p-5 sm:p-6 md:p-8
-                transition-all duration-300
-            ">
+        <div className="flex flex-col items-center justify-center min-h-[450px] md:min-h-0">
+            <div className="rotate-90 md:rotate-0 transition-transform duration-500">
+                <div
+                    className="relative w-[400px] h-[250px] cursor-pointer"
+                    onClick={() => setIsFlipped(!isFlipped)}
+                    style={{ perspective: "1000px" }}
+                >
+                    <motion.div
+                        initial={false}
+                        animate={{ rotateY: isFlipped ? 180 : 0 }}
+                        transition={{ duration: 0.6 }}
+                        style={{ transformStyle: "preserve-3d" }}
+                        className="relative w-full h-full"
+                    >
+                        <div
+                            className="absolute inset-0 w-full h-full rounded-xl overflow-hidden bg-white text-black border border-gray-900"
+                            style={{ backfaceVisibility: "hidden" }}
+                        >
 
-                {/* Glass overlay */}
-                <div className="absolute inset-0 bg-white/5 backdrop-blur-md"></div>
+                            <div className="absolute inset-0 opacity-[0.05] text-[4px] leading-tight pointer-events-none select-none overflow-hidden uppercase">
+                                {Array(500).fill("OPOL COMMUNITY COLLEGE ").join(" ")}
+                            </div>
+                            <div className="relative flex items-center p-3 border-b border-blue-700 bg-white/80 mb-3">
+                                <img src="/assets/images/school-logo.png" alt="logo" className="h-10 w-auto mr-3" />
+                                <div className="text-center flex-1 leading-tight">
+                                    <p className="text-[9px] font-medium">OPOL COMMUNITY COLLEGE</p>
+                                    <p className="text-[9px] font-black text-blue-900 uppercase">Center for Student Development and Leadership</p>
+                                </div>
+                                <img src="/assets/images/csdl-logo.jpg" alt="logo" className="h-10 w-auto ml-3" />
+                            </div>
+                            <div className="relative z-10 flex p-3 gap-3">
+                                <div className="w-1/3 flex flex-col items-center">
+                                    <div className="w-20 h-24 border border-gray-500 bg-gray-100 flex items-center justify-center overflow-hidden">
+                                        <img
+                                            src={
+                                                userProfilePhoto.startsWith("profile-photos/")
+                                                    ? `/storage/${userProfilePhoto}`
+                                                    : `https://lh3.googleusercontent.com/d/${userProfilePhoto}`
+                                            }
+                                            alt="user" className="w-full h-full object-cover" />
+                                    </div>
+                                    <p className="text-[6px] mt-1 font-bold text-center leading-none text-gray-500">IDENTIFICATION NUMBER</p>
+                                    <p className="text-[11px] font-mono font-bold bg-yellow-50 border border-yellow-200 px-1 mt-1 text-blue-800">{userIdNo}</p>
+                                </div>
+                                <div className="w-2/3 text-[9px] flex flex-col pt-1">
+                                    <div className="flex justify-between items-start gap-2">
+                                        <div className="flex-1 space-y-1.5">
+                                            <div>
+                                                <p className="text-gray-500 text-[7px] leading-none uppercase tracking-tight">Last Name</p>
+                                                <p className="font-bold text-[11px] leading-tight">{studentData?.last_name}</p>
+                                            </div>
+                                            <div>
+                                                <p className="text-gray-500 text-[7px] leading-none uppercase tracking-tight">Given Name</p>
+                                                <p className="font-bold text-[11px] leading-tight">{studentData?.first_name}</p>
+                                            </div>
+                                            <div>
+                                                <p className="text-gray-500 text-[7px] leading-none uppercase tracking-tight">Middle Name</p>
+                                                <p className="font-bold text-[11px] leading-tight">{studentData?.middle_name}</p>
+                                            </div>
+                                        </div>
+                                        <div className="flex flex-col items-center mr-5">
+                                            <div className="bg-white p-0.5 border border-gray-200 rounded-sm">
+                                                <QRCodeCanvas
+                                                    value={userIdNo}
+                                                    size={75}
+                                                    level="H"
+                                                    imageSettings={{
+                                                        src: "/assets/images/school-logo.png",
+                                                        height: 20,
+                                                        width: 20,
+                                                        excavate: true,
+                                                    }}
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
 
-                <div className="relative z-10 flex flex-col h-full">
-
-                    {/* TOP SECTION */}
-                    <div className="flex items-center justify-between gap-3">
-
-                        <div className="min-w-0">
-                            <h1 className="
-            text-[11px] sm:text-sm md:text-base
-            font-semibold tracking-wide uppercase
-            whitespace-nowrap overflow-hidden text-ellipsis
-        ">
-                                OPOL COMMUNITY COLLEGE
-                            </h1>
-
-                            <p className="
-            text-[10px] sm:text-xs text-gray-200
-            whitespace-nowrap overflow-hidden text-ellipsis
-        ">
-                                Center for Student Development and Leadership
-                            </p>
+                                    <div className="mt-auto pt-1 mr-5">
+                                        <div className="flex justify-between border-t border-gray-300 pt-1">
+                                            <div>
+                                                <p className="text-gray-500 text-[7px] leading-none uppercase">Date of Birth</p>
+                                                <p className="font-bold text-[9px]">{studentData?.birthday}</p>
+                                            </div>
+                                            <div className="text-right">
+                                                <p className="text-gray-500 text-[7px] leading-none uppercase">Issue Date</p>
+                                                <p className="font-bold text-[9px]">{userCreatedAt}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
-                        <img
-                            src="/assets/images/csdl-logo.jpg"
-                            alt="CSDL Logo"
-                            className="flex-shrink-0 w-10 h-10 sm:w-12 sm:h-12 
-                   rounded-full border border-white/40 shadow-md"
-                        />
-                    </div>
+                        <div
+                            className="absolute inset-0 w-full h-full rounded-xl shadow-xl overflow-hidden bg-gradient-to-br from-[#0f172a] to-[#1e3a8a] text-white flex flex-col items-center justify-center p-6"
+                            style={{ backfaceVisibility: "hidden", transform: "rotateY(180deg)" }}
+                        >
+                            <div className="bg-white p-2 rounded-lg shadow-lg">
+                                <QRCodeCanvas
+                                    value={userIdNo}
+                                    size={130}
+                                    level="H"
+                                    imageSettings={{
+                                        src: "/assets/images/school-logo.png",
+                                        height: 40,
+                                        width: 40,
+                                    }}
+                                />
+                            </div>
 
-
-                    {/* CENTER SECTION */}
-                    <div className="flex flex-col items-center justify-center flex-grow mt-6 mb-6">
-
-                        <div className="bg-white p-3 sm:p-4 rounded-xl shadow-xl">
-                            <QRCodeCanvas
-                                value={userIdNo}
-                                size={window.innerWidth < 400 ? 130 : 150}
-                                bgColor="#ffffff"
-                                fgColor="#0f172a"
-                                level="H"   // Important: keep this HIGH for logo support
-                                imageSettings={{
-                                    src: "/assets/images/school-logo.png",   // public folder path
-                                    height: 40,
-                                    width: 40,
-                                    excavate: true,     // clears background behind logo
-                                }}
-                            />
+                            <div className="mt-4 -text-center">
+                                <p className="text-[7px] text-blue-300 tracking-widest uppercase">IDENTIFICATION NUMBER</p>
+                                <p className="font-mono text-[15px] font-bold tracking-wider">{userIdNo}</p>
+                            </div>
                         </div>
-                    </div>
-
-                    {/* BOTTOM SECTION */}
-                    <div className="text-center">
-                        <div className="font-mono text-lg sm:text-xl md:text-2xl tracking-widest font-semibold mt-1 break-all">
-                            {userIdNo}
-                        </div>
-                    </div>
-
+                    </motion.div>
                 </div>
-
-                {/* Decorative Glow */}
-                <div className="absolute -right-20 -top-20 w-60 h-60 bg-white/10 rounded-full blur-3xl"></div>
-                <div className="absolute -left-20 -bottom-20 w-60 h-60 bg-white/10 rounded-full blur-3xl"></div>
             </div>
+            <p className="mt-24 md:mt-4 text-gray-500 text-[10px] text-center font-medium uppercase tracking-widest">
+                {isFlipped ? "Tap to show front" : "Tap to show back"}
+            </p>
         </div>
     );
 }
+

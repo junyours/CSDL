@@ -4,13 +4,14 @@ namespace App\Http\Controllers\Student;
 
 use App\Http\Controllers\Controller;
 use App\Models\UserInformation;
+use App\Models\UserViolationRecord;
 use App\Services\SisApiService;
 use Illuminate\Http\Request;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
-use App\Models\UserViolationRecord;
 
-class DashboardController extends Controller
+class DigitalIDController extends Controller
 {
     public function index(SisApiService $sisApi)
     {
@@ -35,14 +36,9 @@ class DashboardController extends Controller
                 ->first();
         }
 
-        $unsettledCount = UserViolationRecord::where('user_id', Auth::id())
-            ->where('status', 'unsettled')
-            ->count();
-
-        return Inertia::render('Student/Dashboard', [
+        return Inertia::render('Student/DigitalID/Index', [
             'studentData' => $studentData,
             'userInfoData' => $userInfoData,
-            'unsettledCount' => $unsettledCount,
             'userCreatedAt' => $userCreatedAt,
         ]);
 
@@ -77,5 +73,20 @@ class DashboardController extends Controller
             'present_address' => $student['present_address'] ?? null,
             'zip_code' => $student['zip_code'] ?? null,
         ];
+    }
+
+    public function download()
+    {
+        $user = Auth::user();
+
+        $data = [
+            'userIdNo' => $user->user_id_no,
+            'user' => $user
+        ];
+
+        $pdf = Pdf::loadView('pdf.digital-id', $data)
+            ->setPaper('a4');
+
+        return $pdf->stream('digital-id.pdf');
     }
 }

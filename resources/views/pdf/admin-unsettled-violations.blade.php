@@ -1,12 +1,13 @@
 <!DOCTYPE html>
 <html>
+
 <head>
-    <title>CSDL Violation Report - {{ $user->user_id_no }}</title>
-    <link rel="icon" type="image/png" href="{{ asset('favicon.png') }}">
+    <title>CSDL Violation Report</title>
     <style>
         @page {
             margin: 0cm 0cm;
         }
+
         body {
             font-family: 'Helvetica', 'Arial', sans-serif;
             font-size: 11px;
@@ -37,12 +38,14 @@
             padding-bottom: 15px;
             margin-bottom: 30px;
         }
+
         .school-name {
             font-size: 18px;
             font-weight: 900;
             color: #1e3a8a;
             text-transform: uppercase;
         }
+
         .dept-name {
             font-size: 10px;
             color: #64748b;
@@ -64,6 +67,7 @@
             border-collapse: collapse;
             margin-top: 10px;
         }
+
         th {
             background-color: #1e3a8a;
             color: white;
@@ -73,10 +77,12 @@
             padding: 10px;
             text-align: left;
         }
+
         td {
             padding: 12px 10px;
             border-bottom: 1px solid #e2e8f0;
         }
+
         tr:nth-child(even) {
             background-color: #f1f5f9;
         }
@@ -89,9 +95,21 @@
             font-size: 9px;
             font-weight: bold;
         }
-        .badge-violation { background-color: #dbeafe; color: #1e40af; }
-        .badge-money { background-color: #fee2e2; color: #991b1b; }
-        .badge-service { background-color: #fef9c3; color: #854d0e; }
+
+        .badge-violation {
+            background-color: #dbeafe;
+            color: #1e40af;
+        }
+
+        .badge-money {
+            background-color: #fee2e2;
+            color: #991b1b;
+        }
+
+        .badge-service {
+            background-color: #fef9c3;
+            color: #854d0e;
+        }
 
         /* App Generated Badge */
         .verified-ribbon {
@@ -104,13 +122,14 @@
             font-weight: bold;
             font-size: 9px;
             border-radius: 4px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
 
         .footer {
             margin-top: 50px;
             width: 100%;
         }
+
         .qr-placeholder {
             font-size: 8px;
             color: #94a3b8;
@@ -140,67 +159,32 @@
         </table>
     </div>
 
-    <div class="student-info-bar">
-        <table style="width: 100%; border: none; background: transparent;">
-            <tr style="background: transparent;">
-                <td style="border: none; padding: 0;">
-                    <span style="color: #64748b; font-size: 9px; text-transform: uppercase;">ID Number</span><br>
-                    <span style="font-size: 16px; font-weight: bold; color: #0f172a;">{{ $user->user_id_no }}</span>
-                </td>
-                <td style="border: none; padding: 0; text-align: right;">
-                    <span style="color: #64748b; font-size: 9px; text-transform: uppercase;">Date Generated</span><br>
-                    <span style="font-size: 12px; font-weight: bold;">{{ now()->format('F d, Y') }}</span>
-                </td>
-            </tr>
-        </table>
-    </div>
-
     <table>
         <thead>
             <tr>
                 <th>Ref #</th>
-                <th>Issued Date & Time</th>
-                <th>Violation Details</th>
+                <th>ID Number</th>
+                <th>Violation</th>
                 <th>Sanction</th>
+                <th>Status</th>
+                <th>Issued Date & Time</th>
             </tr>
         </thead>
         <tbody>
-            @forelse($violations as $row)
+            @foreach($records as $row)
                 <tr>
-                    <td style="font-family: monospace; font-weight: bold; color: #475569;">#{{ $row->reference_no }}</td>
-                    <td>{{ \Carbon\Carbon::parse($row->issued_date_time)->format('M d, Y') }}<br>
-                        <span style="font-size: 9px; color: #94a3b8;">{{ \Carbon\Carbon::parse($row->issued_date_time)->format('h:i A') }}</span>
-                    </td>
+                    <td style="font-family: monospace; font-weight: bold; color: #475569;">{{ $row->reference_no }}</td>
+                    <td>{{ $row->user?->user_id_no }}</td>
+                    <td>{{ $row->formatted_codes }}</td>
+                    <td>{{ $row->sanction_desc }}</td>
                     <td>
-                        @if($row->violation_codes)
-                            @foreach($row->violation_codes as $code)
-                                <span class="badge badge-violation">{{ $code }}</span>
-                            @endforeach
-                        @endif
+                        <span class="badge {{ $row->status === 'settled' ? 'badge-settled' : 'badge-pending' }}">
+                            {{ strtoupper($row->status) }}
+                        </span>
                     </td>
-                    <td>
-                        @if($row->sanction)
-                            @php $type = $row->sanction->sanction_type; @endphp
-                            <div class="badge {{ $type === 'monetary' ? 'badge-money' : 'badge-service' }}">
-                                {{ $row->sanction->sanction_name }}
-                            </div>
-                            <div style="font-size: 9px; margin-top: 4px; font-weight: bold;">
-                                @if($type === 'monetary')
-                                    PHP {{ number_format($row->sanction->monetary_amount, 2) }}
-                                @else
-                                    {{ $row->sanction->service_time }} {{ ucfirst($row->sanction->service_time_type) }}
-                                @endif
-                            </div>
-                        @else
-                            <span style="color: #cbd5e1;">Pending</span>
-                        @endif
-                    </td>
+                    <td>{{ $row->issued_date_time->format('M d, Y h:i A') }}</td>
                 </tr>
-            @empty
-                <tr>
-                    <td colspan="4" style="text-align:center; padding: 40px; color: #94a3b8;">No unsettled violations found. Record is clear.</td>
-                </tr>
-            @endforelse
+            @endforeach
         </tbody>
     </table>
 
@@ -209,13 +193,16 @@
             <tr style="background: transparent;">
                 <td style="width: 50%; border: none; vertical-align: bottom;">
                     <div style="border-top: 1px solid #334155; width: 200px; padding-top: 5px; text-align: center;">
-                        <span style="font-size: 9px; font-weight: bold; text-transform: uppercase;">Authorized Personnel</span>
+                        <span style="font-size: 9px; font-weight: bold; text-transform: uppercase;">Authorized
+                            Personnel</span>
                     </div>
                 </td>
                 <td style="width: 50%; border: none; text-align: right;">
-                    <div style="display: inline-block; text-align: left; border: 1px dashed #cbd5e1; padding: 10px; border-radius: 8px;">
+                    <div
+                        style="display: inline-block; text-align: left; border: 1px dashed #cbd5e1; padding: 10px; border-radius: 8px;">
                         <span style="font-size: 8px; font-weight: bold; color: #10b981;">DIGITAL VERIFICATION</span><br>
-                        <span style="font-size: 8px; color: #64748b;">Timestamp: {{ now()->format('Ymd-His') }}</span><br>
+                        <span style="font-size: 8px; color: #64748b;">Timestamp:
+                            {{ now()->format('Ymd-His') }}</span><br>
                         <span style="font-size: 8px; color: #64748b;">ID: {{ md5($user->user_id_no . now()) }}</span>
                     </div>
                 </td>
@@ -223,4 +210,5 @@
         </table>
     </div>
 </body>
+
 </html>

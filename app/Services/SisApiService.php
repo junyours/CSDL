@@ -22,7 +22,7 @@ class SisApiService
                 $this->baseUrl . '/api/csg-attendance/login',
                 [
                     'user_id_no' => config('services.sis.user_id'),
-                    'password'   => config('services.sis.password'),
+                    'password' => config('services.sis.password'),
                 ]
             );
 

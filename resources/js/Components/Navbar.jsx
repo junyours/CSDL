@@ -1,4 +1,4 @@
-import { Bars3Icon, UserCircleIcon } from '@heroicons/react/24/outline';
+import { Bars3Icon, IdentificationIcon, UserCircleIcon } from '@heroicons/react/24/outline';
 import { router, usePage } from '@inertiajs/react';
 import { useState, useRef, useEffect } from 'react';
 
@@ -25,6 +25,8 @@ export default function Navbar({ user, onMobileMenu, breadcrumbs = [] }) {
             {index < breadcrumbs.length - 1 && <span className="mx-2">/</span>}
         </span>
     ));
+
+    const isDigitalIDActive = url.startsWith('/student/digital-id');
 
     return (
         <>
@@ -99,6 +101,21 @@ export default function Navbar({ user, onMobileMenu, breadcrumbs = [] }) {
                         <Bars3Icon className="h-6 w-6" />
                         <span className="text-xs mt-1">Menu</span>
                     </button>
+
+                    {/* DIGITAL ID TAB (Special Action) */}
+                    {user?.user_role === 'student' && (
+                        <div className="relative -top-5"> {/* Lifts the button above the bar */}
+                            <button
+                                onClick={() => router.visit('/student/digital-id')}
+                                className={`flex flex-col items-center justify-center w-16 h-16 rounded-full shadow-xl transition-all duration-300 transform active:scale-95 ${isDigitalIDActive
+                                    ? 'bg-indigo-600 text-white ring-4 ring-white'
+                                    : 'bg-white text-indigo-600 border-2 border-indigo-100 hover:bg-indigo-50'
+                                    }`}
+                            >
+                                <IdentificationIcon className={`${isDigitalIDActive ? 'h-8 w-8' : 'h-7 w-7'}`} />
+                            </button>
+                        </div>
+                    )}
 
                     {/* PROFILE TAB */}
                     <button

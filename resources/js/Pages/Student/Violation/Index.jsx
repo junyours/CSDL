@@ -109,7 +109,7 @@ export default function Index({ auth, violations, filters }) {
     return (
         <AppLayout user={user} breadcrumbs={["Violations"]}>
             {user?.profile_photo ? (
-                <>
+                <div className="pb-20">
                     <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl p-6 shadow-lg mb-8">
                         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-5">
                             <div>
@@ -137,12 +137,8 @@ export default function Index({ auth, violations, filters }) {
                         searchPlaceholder="Search violations..."
                         total={violations.total}
                     />
-                </>
+                </div>
             ) : (
-
-                /* =========================
-                           SHOW INSTRUCTION CARD
-                        ========================== */
 
                 <div className="max-w-2xl mx-auto bg-white border border-yellow-200 shadow-sm rounded-xl p-8">
 

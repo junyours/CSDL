@@ -8,6 +8,7 @@ use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\ViolationController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\Student\DigitalIdController;
 use App\Http\Controllers\UserViolationRecordController;
 use App\Http\Controllers\UserProfileController;
 use Illuminate\Support\Facades\Route;
@@ -63,13 +64,13 @@ Route::middleware(['auth'])->group(function () {
 
         Route::get('/manage-user', action: [UserController::class, 'index'])->name('manage.user.index');
         Route::post('/manage-user/store', [UserController::class, 'store'])->name('manage.user.store');
-        Route::get('/admin/student-enrollment', [UserController::class, 'getStudentEnrollmentAPI']);
-        Route::post('/admin/user/reset-password', [UserController::class, 'resetPassword'])->name('admin.users.resetPassword');
+        Route::get('/manage-user/{id}/show', [UserController::class, 'show'])->name('manage.user.show');
+        Route::post('/manage/user/reset-password', [UserController::class, 'resetPassword'])->name('manage.user.reset-password');
         Route::post('/admin/user/deactivate', [UserController::class, 'deactivate'])->name('admin.users.deactivate');
 
         Route::get('/manage-violation-records', [UserViolationRecordController::class, 'allUserViolationRecordsIndex'])->name('admin.userViolationRecords.index');
-        Route::put('/manage-violation-records/{id}/update-status', [UserViolationRecordController::class, 'updateStatus'])
-            ->name('admin.userViolationRecords.updateStatus');
+        Route::put('/manage-violation-records/{id}/update-status', [UserViolationRecordController::class, 'updateStatus'])->name('admin.userViolationRecords.updateStatus');
+        Route::get('/manage-violation-records/export', [UserViolationRecordController::class, 'exportPDF'])->name('admin.userViolationRecords.exportCSV');
 
     });
 
@@ -89,10 +90,9 @@ Route::middleware(['auth'])->group(function () {
     Route::middleware('role:student')->group(function () {
         Route::get('/student/dashboard', [\App\Http\Controllers\Student\DashboardController::class, 'index'])->name('student.dashboard');
         Route::get('/student/violations', [UserViolationRecordController::class, 'userViolationRecordsIndex'])->name('student.violations.index');
-        Route::get(
-            '/student/violations/print',
-            [UserViolationRecordController::class, 'printUnsettled']
-        )->name('student.violations.print');
+        Route::get('/student/violations/print', [UserViolationRecordController::class, 'printUnsettled'])->name('student.violations.print');
+
+        Route::get('/student/digital-id', [DigitalIDController::class, 'index'])->name('student.digital-id.index');
 
     });
 
