@@ -19,42 +19,39 @@ export default function DigitalID({
                     onClick={() => setIsFlipped(!isFlipped)}
                     style={{ perspective: "1000px" }}
                 >
-<motion.div
-    // 1. Initial State: Above the screen, tilted back, and transparent
-    initial={{ 
-        y: -100, 
-        opacity: 0, 
-        rotateX: -20, 
-        scale: 0.9 
-    }}
-    // 2. Entrance Animation: Drop to center, flatten out, and fade in
-    animate={{ 
-        y: 0, 
-        opacity: 1, 
-        rotateX: 0, 
-        scale: 1,
-        // This ensures the flip logic still works alongside the entrance
-        rotateY: isFlipped ? 180 : 0 
-    }}
-    // 3. The "Premium" Spring Physics
-    transition={{ 
-        type: "spring",
-        stiffness: 120, // Lower = more "heavy"
-        damping: 12,    // Lower = more "bounce"
-        duration: 0.8,
-        // Delay the entrance slightly so the page layout settles first
-        delay: 0.2 
-    }}
-    style={{ transformStyle: "preserve-3d" }}
-    className="relative w-full h-full p-[1.5px] rounded-[14px] bg-gradient-to-tr from-white/20 via-white/80 to-white/20 shadow-[0_0_30px_rgba(0,0,0,0.2)]"
->
-                        <div className="absolute inset-0 rounded-[14px] overflow-hidden pointer-events-none">
-                            <div className="absolute inset-0 bg-[conic-gradient(from_0deg,transparent,white,transparent)] opacity-20 animate-[spin_4s_linear_infinite]" />
-                        </div>
+                    <motion.div
+                        // 1. Initial State: Above the screen, tilted back, and transparent
+                        initial={{
+                            y: -100,
+                            opacity: 0,
+                            rotateX: -20,
+                            scale: 0.9
+                        }}
+                        // 2. Entrance Animation: Drop to center, flatten out, and fade in
+                        animate={{
+                            y: 0,
+                            opacity: 1,
+                            rotateX: 0,
+                            scale: 1,
+                            // This ensures the flip logic still works alongside the entrance
+                            rotateY: isFlipped ? 180 : 0
+                        }}
+                        // 3. The "Premium" Spring Physics
+                        transition={{
+                            type: "spring",
+                            stiffness: 120, // Lower = more "heavy"
+                            damping: 12,    // Lower = more "bounce"
+                            duration: 0.8,
+                            // Delay the entrance slightly so the page layout settles first
+                            delay: 0.2
+                        }}
+                        style={{ transformStyle: "preserve-3d" }}
+                        className="relative w-full h-full rounded-[14px] shadow-[0_0_20px_3px_rgba(0,0,0,0.3)]"
+                    >
 
                         {/* FRONT SIDE */}
                         <div
-                            className={`absolute inset-0 w-full h-full rounded-xl overflow-hidden bg-white text-black border border-gray-900 transition-opacity duration-300 ${isFlipped ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
+                            className="absolute inset-0 w-full h-full rounded-xl overflow-hidden bg-white text-black border border-gray-900"
                             style={{
                                 backfaceVisibility: "hidden",
                                 WebkitBackfaceVisibility: "hidden"
@@ -141,7 +138,7 @@ export default function DigitalID({
 
                         {/* BACK SIDE */}
                         <div
-                            className={`absolute inset-0 w-full h-full rounded-xl shadow-xl overflow-hidden bg-gradient-to-br from-[#0f172a] to-[#1e3a8a] text-white flex flex-col items-center justify-center p-6 transition-opacity duration-300 ${!isFlipped ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
+                            className="absolute inset-0 w-full h-full rounded-xl shadow-xl overflow-hidden bg-gradient-to-br from-[#0f172a] to-[#1e3a8a] text-white flex flex-col items-center justify-center p-6"
                             style={{
                                 backfaceVisibility: "hidden",
                                 WebkitBackfaceVisibility: "hidden",
@@ -169,7 +166,7 @@ export default function DigitalID({
                     </motion.div>
                 </div>
             </div>
-            <p className="mt-24 md:mt-4 text-gray-500 text-[10px] text-center font-medium uppercase tracking-widest">
+            <p className="mt-24 md:mt-4 text-white text-[10px] text-center font-medium uppercase tracking-widest">
                 {isFlipped ? "Tap to show front" : "Tap to show back"}
             </p>
         </div>
