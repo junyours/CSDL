@@ -51,10 +51,13 @@ export default function DigitalID({
 
                         {/* FRONT SIDE */}
                         <div
-                            className="absolute inset-0 w-full h-full rounded-xl overflow-hidden bg-white text-black border border-gray-900"
+                            className="absolute inset-0 w-full h-full rounded-xl overflow-hidden bg-white text-black border border-gray-900 transition-opacity duration-200"
                             style={{
                                 backfaceVisibility: "hidden",
-                                WebkitBackfaceVisibility: "hidden"
+                                WebkitBackfaceVisibility: "hidden",
+                                opacity: isFlipped ? 0 : 1,
+                                transition: "opacity 0.15s ease",
+                                pointerEvents: isFlipped ? "none" : "auto"
                             }}
                         >
                             <div className="absolute inset-0 opacity-[0.05] text-[4px] leading-tight pointer-events-none select-none overflow-hidden uppercase">
@@ -138,11 +141,13 @@ export default function DigitalID({
 
                         {/* BACK SIDE */}
                         <div
-                            className="absolute inset-0 w-full h-full rounded-xl shadow-xl overflow-hidden bg-gradient-to-br from-[#0f172a] to-[#1e3a8a] text-white flex flex-col items-center justify-center p-6"
+                            className="absolute inset-0 w-full h-full rounded-xl shadow-xl overflow-hidden bg-gradient-to-br from-[#0f172a] to-[#1e3a8a] text-white flex flex-col items-center justify-center p-6 transition-opacity duration-200"
                             style={{
                                 backfaceVisibility: "hidden",
                                 WebkitBackfaceVisibility: "hidden",
-                                transform: "rotateY(180deg)"
+                                transform: "rotateY(180deg)",
+                                opacity: isFlipped ? 1 : 0,
+                                pointerEvents: isFlipped ? "auto" : "none"
                             }}
                         >
                             <div className="bg-white p-2 rounded-lg shadow-lg">
@@ -166,7 +171,7 @@ export default function DigitalID({
                     </motion.div>
                 </div>
             </div>
-            <p className="mt-24 md:mt-4 text-white text-[10px] text-center font-medium uppercase tracking-widest">
+            <p className="mt-24 md:mt-4 text-black text-[10px] text-center font-medium uppercase tracking-widest">
                 {isFlipped ? "Tap to show front" : "Tap to show back"}
             </p>
         </div>
