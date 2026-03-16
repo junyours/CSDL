@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Models\Notification;
 use App\Models\Sanction;
 use App\Models\User;
 use App\Models\UserViolationRecord;
@@ -10,6 +11,7 @@ use App\Models\Violation;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Validator;
@@ -40,42 +42,63 @@ class UserViolationRecordController extends Controller
         $user = User::where('user_id_no', $request->user_id_no)->first();
 
         if (!$user) {
-            return response()->json([
-                'message' => 'User not found',
-            ], 404);
+            return response()->json(['message' => 'User not found'], 404);
         }
 
         $sanctionId = $request->sanction_id;
-
         if (!$sanctionId) {
             $defaultSanction = Sanction::where('is_default', 1)->first();
-            $sanctionId = $defaultSanction?->id; // will be null if none exists
+            $sanctionId = $defaultSanction?->id;
         }
 
-        $record = UserViolationRecord::create([
-            'reference_no' => $this->generateReferenceNumber(),
-            'user_id' => $user->id,
-            'violation_ids' => $request->violations,
-            'sanction_id' => $sanctionId, // <-- uses default if available
-            'issued_by' => Auth::id(),
-            'issued_date_time' => now(),
-            'remarks' => $request->remarks ?? null,
-            'status' => 'unsettled',
-        ]);
+        // Start Transaction to ensure data integrity
+        return DB::transaction(function () use ($request, $user, $sanctionId) {
 
-        // Load relationships
-        $record->load('user', 'sanction');
+            // 1. Create Violation Record
+            $record = UserViolationRecord::create([
+                'reference_no' => $this->generateReferenceNumber(),
+                'user_id' => $user->id,
+                'violation_ids' => $request->violations,
+                'sanction_id' => $sanctionId,
+                'issued_by' => Auth::id(),
+                'issued_date_time' => now(),
+                'remarks' => $request->remarks ?? null,
+                'status' => 'unsettled',
+            ]);
 
-        // Fetch violation codes
-        $violations = Violation::whereIn('id', $record->violation_ids)
-            ->pluck('violation_code');
+            // Load codes for the notification message
+            $violations = Violation::whereIn('id', $record->violation_ids)->pluck('violation_code');
 
-        $record->violation_codes = $violations;
+            // We pass null or empty arrays for courses/years since this is a direct user notification
+            $notificationId = DB::table('notifications')->insertGetId([
+                'notifiable_type' => 'violation',
+                'data' => json_encode([
+                    'title' => 'New Violation Recorded',
+                    'message' => "Ticket #{$record->reference_no}: " . $violations->implode(', '),
+                    'link' => "/student/violations"
+                ]),
+                'created_at' => now(),
+            ]);
 
-        return response()->json([
-            'message' => 'Violation record created successfully',
-            'record' => $record,
-        ], 201);
+            // 3. Link Notification to the User
+            DB::table('notification_users')->insert([
+                'notification_id' => $notificationId,
+                'user_id' => $user->id,
+                'is_read' => false,
+                'read_at' => null,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            // Prepare response data
+            $record->load('user', 'sanction');
+            $record->violation_codes = $violations;
+
+            return response()->json([
+                'message' => 'Violation record created and user notified successfully',
+                'record' => $record,
+            ], 201);
+        });
     }
 
     private function generateReferenceNumber()
@@ -148,9 +171,7 @@ class UserViolationRecordController extends Controller
             ->paginate(20)
             ->withQueryString();
 
-        /**
-         * Collect all violation IDs from current page for the map
-         */
+        //COLLECT ALL VIOLATION IDS
         $allViolationIds = collect($violations->items())
             ->pluck('violation_ids')
             ->flatten()
@@ -161,21 +182,24 @@ class UserViolationRecordController extends Controller
         $violationMap = Violation::whereIn('id', $allViolationIds)
             ->pluck('violation_code', 'id');
 
-        /**
-         * Transform data
-         */
+        //TRANSFORM TABLE DATA
         $violations->getCollection()->transform(function ($record) use ($violationMap) {
+
             return [
                 'id' => $record->id,
                 'reference_no' => $record->reference_no,
                 'issued_date_time' => $record->issued_date_time,
                 'status' => $record->status,
+
                 'user' => [
                     'user_id_no' => $record->user?->user_id_no,
+                    'id' => $record->user?->id,
                 ],
+
                 'issuer' => [
                     'user_id_no' => $record->issuer?->user_id_no,
                 ],
+
                 'sanction' => $record->sanction ? [
                     'sanction_type' => $record->sanction->sanction_type,
                     'monetary_amount' => $record->sanction->monetary_amount,
@@ -183,6 +207,7 @@ class UserViolationRecordController extends Controller
                     'service_time_type' => $record->sanction->service_time_type,
                     'sanction_name' => $record->sanction->sanction_name,
                 ] : null,
+
                 'violation_codes' => collect($record->violation_ids)
                     ->map(fn($id) => $violationMap[$id] ?? null)
                     ->filter()
@@ -190,10 +215,17 @@ class UserViolationRecordController extends Controller
             ];
         });
 
-        /**
-         * TOP 3 VIOLATION CODES TODAY
-         */
-        $todayViolationIds = UserViolationRecord::whereDate('issued_date_time', now()->toDateString())
+       //TOTAL VIOLATIONS TODAY
+       
+
+        $today = now()->toDateString();
+
+        $totalViolationsToday = UserViolationRecord::whereDate('issued_date_time', $today)->count();
+
+        //TOP 3 VIOLATION CODES TODAY
+
+
+        $todayViolationIds = UserViolationRecord::whereDate('issued_date_time', $today)
             ->pluck('violation_ids')
             ->flatten()
             ->filter();
@@ -203,61 +235,44 @@ class UserViolationRecordController extends Controller
             ->sortDesc()
             ->take(3)
             ->map(function ($count, $violationId) {
+
                 $violation = Violation::find($violationId);
+
                 return [
                     'violation_code' => $violation?->violation_code,
                     'total' => $count,
                 ];
             })->values();
 
-        /**
-         * ==========================================
-         * TOP 1 USER WITH MOST UNSETTLED VIOLATIONS (ALL TIME)
-         * ==========================================
-         */
-        $topUnsettledUserRecord = UserViolationRecord::where('status', 'unsettled')
+        //USERS WITH MORE THAN 10 UNSETTLED
+
+        $usersWithManyUnsettled = UserViolationRecord::where('status', 'unsettled')
             ->selectRaw('user_id, COUNT(*) as total')
             ->groupBy('user_id')
+            ->having('total', '>', 10)
             ->orderByDesc('total')
             ->with('user:id,user_id_no')
-            ->first();
+            ->get()
+            ->map(function ($record) {
 
-        $topUserUnsettledData = null;
-
-        if ($topUnsettledUserRecord) {
-            // Get all violation IDs belonging to this specific user that are unsettled
-            $userViolationIds = UserViolationRecord::where('user_id', $topUnsettledUserRecord->user_id)
-                ->where('status', 'unsettled')
-                ->pluck('violation_ids')
-                ->flatten()
-                ->filter();
-
-            // Count occurrences of each violation for this user
-            $userViolationCounts = $userViolationIds->countBy();
-
-            // Fetch the codes for these specific violations
-            $userViolationDetails = Violation::whereIn('id', $userViolationCounts->keys())
-                ->get()
-                ->map(function ($v) use ($userViolationCounts) {
-                    return [
-                        'code' => $v->violation_code,
-                        'count' => $userViolationCounts[$v->id] ?? 0
-                    ];
-                });
-
-            $topUserUnsettledData = [
-                'user_id' => $topUnsettledUserRecord->user_id,
-                'user_id_no' => $topUnsettledUserRecord->user?->user_id_no,
-                'total_unsettled' => $topUnsettledUserRecord->total,
-                'violations_breakdown' => $userViolationDetails,
-            ];
-        }
+                return [
+                    'user_id' => $record->user_id,
+                    'user_id_no' => $record->user?->user_id_no,
+                    'total_unsettled' => $record->total,
+                ];
+            });
 
         return Inertia::render('Admin/UserViolationRecords/Index', [
+
             'violations' => $violations,
             'filters' => $request->only('search'),
+
+            'totalViolationsToday' => $totalViolationsToday,
+
             'topViolationCodesToday' => $topViolationCodesToday,
-            'topUserUnsettledAllTime' => $topUserUnsettledData,
+
+            'usersWithManyUnsettled' => $usersWithManyUnsettled,
+
         ]);
     }
 

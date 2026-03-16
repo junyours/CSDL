@@ -19,8 +19,11 @@ class DashboardController extends Controller
             ->whereDate('issued_date_time', $today)
             ->count();
 
+        $userInformation = Auth::user()->information;
+
         return Inertia::render('Security/Dashboard/Index', [
             'totalIssuedTicketToday' => $totalIssuedTicketToday,
+            'userInformation' => $userInformation,
         ]);
     }
 }

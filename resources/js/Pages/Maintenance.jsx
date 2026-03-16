@@ -7,7 +7,7 @@ export default function Maintenance({ auth }) {
     return (
         <AppLayout user={user} breadcrumbs={["Under Maintenance"]}>
             <div className="flex items-center justify-center min-h-[70vh]">
-                
+
                 {/* Card Container */}
                 <div className="relative w-full max-w-2xl">
                     {/* Background Glow */}
@@ -15,7 +15,7 @@ export default function Maintenance({ auth }) {
                     <div className="absolute -bottom-10 -right-10 w-40 h-40 bg-purple-500/20 rounded-full blur-3xl"></div>
 
                     {/* Main Card */}
-                    <div className="relative bg-white rounded-lg shadow border p-8 md:p-12 text-center overflow-hidden">
+                    <div className="relative p-8 md:p-12 text-center overflow-hidden">
 
                         {/* Status Badge */}
                         <div className="inline-flex items-center gap-2 bg-amber-50 text-amber-600 px-4 py-1.5 rounded-full text-sm font-medium mb-6">

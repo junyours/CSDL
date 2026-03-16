@@ -22,7 +22,6 @@ export default function Index({ auth, studentData, userInfoData, avatar }) {
     const [loadingPassword, setLoadingPassword] = useState(false);
     const fileInputRef = useRef(null);
 
-    // Business Logic remains untouched...
     const handleLogout = () => router.post("/logout");
     const handleAvatarClick = () => fileInputRef.current.click();
     const handleFileChange = (e) => {
@@ -82,124 +81,145 @@ export default function Index({ auth, studentData, userInfoData, avatar }) {
 
     return (
         <AppLayout user={user} breadcrumbs={["Profile"]}>
-            <div className="pb-20">
-                <div className="px-0 max-w-md mx-auto space-y-4">
+            <div className="max-w-5xl mx-auto md:mx-auto md:px-4">
+                <div className="bg-white shadow-sm border border-slate-200 md:rounded-b-xl overflow-hidden mb-6">
+                    <div className="h-full md:h-full w-full relative overflow-hidden">
+                        <img
+                            src="/assets/images/cover.jpg"
+                            alt="Cover"
+                            className="w-full h-full object-cover"
+                        />
+                        <div className="absolute inset-0 bg-black/10"></div>
+                    </div>
 
-                    {/* PROFILE CARD */}
-                    <div className="bg-white rounded-md shadow-sm border border-slate-200 overflow-hidden">
-                        <div className="bg-indigo-600 h-24 w-full"></div>
-                        <div className="px-6 pb-6">
-                            <div className="relative -mt-12 mb-4">
-                                <div
-                                    onClick={handleAvatarClick}
-                                    className="relative group w-24 h-24 mx-auto rounded-md border-4 border-white shadow-md overflow-hidden bg-slate-200 cursor-pointer"
-                                >
-                                    {avatar ? (
-                                        <img src={avatar} className="w-full h-full object-cover" />
-                                    ) : (
-                                        <div className="w-full h-full flex items-center justify-center">
-                                            <UserIcon className="w-12 h-12 text-slate-400" />
-                                        </div>
-                                    )}
-                                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <Camera className="text-white w-6 h-6" />
+                    <div className="px-4 md:px-8 pb-6">
+                        <div className="relative flex flex-col md:flex-row items-center md:items-end -mt-12 md:-mt-16 mb-4 md:gap-6">
+                            <div
+                                onClick={handleAvatarClick}
+                                className="relative group w-32 h-32 md:w-40 md:h-40 rounded-full border-4 border-white shadow-md overflow-hidden bg-slate-200 cursor-pointer flex-shrink-0"
+                            >
+                                {avatar ? (
+                                    <img src={avatar} className="w-full h-full object-cover" />
+                                ) : (
+                                    <div className="w-full h-full flex items-center justify-center">
+                                        <UserIcon className="w-12 h-12 text-slate-400" />
                                     </div>
+                                )}
+                                <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <Camera className="text-white w-6 h-6" />
                                 </div>
-                                <input type="file" ref={fileInputRef} onChange={handleFileChange} accept="image/*" className="hidden" />
                             </div>
 
-                            <div className="text-center">
-                                <h2 className="text-md font-bold text-slate-900 leading-tight">
-                                    {data?.first_name} {data?.last_name}
+                            <div className="text-center mt-2 md:text-left md:mb-4 flex-1">
+                                <h2 className="text-sm md:text-2xl font-bold text-slate-900 leading-tight">
+                                    {data?.first_name} {data?.middle_name} {data?.last_name}
                                 </h2>
-                                <p className="text-slate-500 text-sm font-medium">ID: {user?.user_id_no}</p>
-                                <span className="inline-block mt-2 px-3 py-1 rounded-full bg-indigo-50 text-indigo-600 text-[10px] font-bold uppercase tracking-wider">
-                                    {user?.user_role}
-                                </span>
+                                <p className="text-slate-500 text-sm py-2 md:text-base font-medium">{user?.user_id_no}</p>
+                            </div>
+
+                            <input type="file" ref={fileInputRef} onChange={handleFileChange} accept="image/*" className="hidden" />
+                        </div>
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 px-4 md:px-0">
+
+                    {/* LEFT SIDEBAR - INFO (Facebook "Intro" style) */}
+                    <div className="lg:col-span-5 space-y-6">
+                        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 md:p-6">
+                            <h3 className="font-bold text-slate-800 text-base mb-4">Personal details</h3>
+                            <div className="space-y-5">
+                                <InfoRow icon={<VenusAndMars size={18} />} label="Gender" value={data?.gender || '-'} />
+                                <InfoRow icon={<Calendar size={18} />} label="Birthday" value={data?.birthday || '-'} />
+                                <InfoRow icon={<Mail size={18} />} label="Email Address" value={data?.email_address || '-'} />
+                                <InfoRow icon={<Phone size={18} />} label="Contact Number" value={data?.contact_number || '-'} />
+                                <InfoRow icon={<MapPin size={18} />} label="Current Address" value={`${data?.present_address || ''} ${data?.zip_code || ''}`.trim() || '-'} />
                             </div>
                         </div>
                     </div>
 
-                    {/* INFORMATION GROUPS */}
-                    <div className="bg-white rounded-md shadow-sm border border-slate-200 divide-y divide-slate-100">
-                        <div className="p-4 grid grid-cols-2 gap-4">
-                            <InfoRow icon={<VenusAndMars size={18} />} label="Gender" value={data?.gender || '-'} />
-                            <InfoRow icon={<Calendar size={18} />} label="Birthday" value={data?.birthday || '-'} />
+                    {/* RIGHT SIDE - ACTIONS & SETTINGS */}
+                    <div className="lg:col-span-7 space-y-6">
+                        {/* CHANGE PASSWORD */}
+                        <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                            <button
+                                onClick={() => setShowChangePassword(!showChangePassword)}
+                                className="w-full flex justify-between items-center p-5 hover:bg-slate-50 transition-colors"
+                            >
+                                <div className="text-left">
+                                    <span className="block font-bold text-slate-800 text-base">Security & Password</span>
+                                    <span className="text-xs text-slate-500 font-normal">Manage your account protection</span>
+                                </div>
+                                <ChevronDown className={`text-slate-400 transition-transform ${showChangePassword ? 'rotate-180' : ''}`} size={24} />
+                            </button>
+
+                            <div className={`overflow-hidden transition-all duration-300 ${showChangePassword ? "max-h-[500px] opacity-100 p-5 border-t border-slate-100" : "max-h-0 opacity-0"}`}>
+                                <form onSubmit={handleChangePassword} className="space-y-4 max-w-md">
+                                    <div className="space-y-1">
+                                        <label className="text-xs font-bold text-slate-500 uppercase ml-1">New Password</label>
+                                        <input
+                                            type="password"
+                                            placeholder="Enter new password"
+                                            value={newPassword}
+                                            onChange={(e) => setNewPassword(e.target.value)}
+                                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition"
+                                            required
+                                        />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="text-xs font-bold text-slate-500 uppercase ml-1">Confirm Password</label>
+                                        <input
+                                            type="password"
+                                            placeholder="Repeat new password"
+                                            value={confirmPassword}
+                                            onChange={(e) => setConfirmPassword(e.target.value)}
+                                            className={`w-full bg-slate-50 border rounded-xl px-4 py-3 text-sm outline-none transition ${newPassword && confirmPassword && newPassword !== confirmPassword ? 'border-red-400 focus:ring-red-500' : 'border-slate-200 focus:ring-indigo-500'}`}
+                                            required
+                                        />
+                                    </div>
+                                    {newPassword && confirmPassword && newPassword !== confirmPassword && (
+                                        <p className="text-red-500 text-xs">Passwords do not match.</p>
+                                    )}
+                                    <button
+                                        type="submit"
+                                        disabled={loadingPassword || (newPassword !== confirmPassword)}
+                                        className="w-full md:w-auto px-8 bg-indigo-600 text-white font-semibold py-3 rounded-xl shadow-indigo-100 shadow-lg hover:bg-indigo-700 active:scale-95 transition disabled:opacity-50"
+                                    >
+                                        {loadingPassword ? "Updating..." : "Update Password"}
+                                    </button>
+                                </form>
+                            </div>
                         </div>
-                        <div className="p-4 space-y-6">
-                            <InfoRow icon={<Mail size={18} />} label="Email Address" value={data?.email_address || '-'} />
-                            <InfoRow icon={<Phone size={18} />} label="Contact Number" value={data?.contact_number || '-'} />
-                            <InfoRow icon={<MapPin size={18} />} label="Current Address" value={`${data?.present_address || ''} ${data?.zip_code || ''}`.trim() || '-'} />
+
+                        {/* LOGOUT */}
+                        <div className="pb-6">
+                            <button
+                                onClick={handleLogout}
+                                className="w-full md:w-full px-10 flex items-center justify-center gap-2 bg-white border border-red-100 text-red-600 font-bold py-4 rounded-xl hover:bg-red-50 transition active:scale-[0.98] shadow-sm"
+                            >
+                                <LogOut size={18} />
+                                Sign Out
+                            </button>
                         </div>
                     </div>
-
-                    {/* CHANGE PASSWORD */}
-                    <div className="bg-white rounded-md shadow-sm border border-slate-200 overflow-hidden">
-                        <button
-                            onClick={() => setShowChangePassword(!showChangePassword)}
-                            className="w-full flex justify-between items-center p-4 hover:bg-slate-50 transition-colors"
-                        >
-                            <span className="font-semibold text-slate-700 text-sm">Security & Password</span>
-                            <ChevronDown className={`text-slate-400 transition-transform ${showChangePassword ? 'rotate-180' : ''}`} size={20} />
-                        </button>
-
-                        <div className={`overflow-hidden transition-all duration-300 ${showChangePassword ? "max-h-96 opacity-100 p-4 border-t border-slate-100" : "max-h-0 opacity-0"}`}>
-                            <form onSubmit={handleChangePassword} className="space-y-3">
-                                <input
-                                    type="password"
-                                    placeholder="New Password"
-                                    value={newPassword}
-                                    onChange={(e) => setNewPassword(e.target.value)}
-                                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition"
-                                    required
-                                />
-                                <input
-                                    type="password"
-                                    placeholder="Confirm Password"
-                                    value={confirmPassword}
-                                    onChange={(e) => setConfirmPassword(e.target.value)}
-                                    className={`w-full bg-slate-50 border rounded-xl px-4 py-2.5 text-sm outline-none transition ${newPassword && confirmPassword && newPassword !== confirmPassword ? 'border-red-400 focus:ring-red-500' : 'border-slate-200 focus:ring-indigo-500'}`}
-                                    required
-                                />
-                                {newPassword && confirmPassword && newPassword !== confirmPassword ? <p className="text-red-500 text-sm">Passwords do not match.</p> : null}
-                                <button
-                                    type="submit"
-                                    disabled={loadingPassword || (newPassword !== confirmPassword)}
-                                    className="w-full bg-indigo-600 text-white font-semibold py-2.5 rounded-xl shadow-indigo-100 shadow-lg hover:bg-indigo-700 active:scale-95 transition disabled:opacity-50"
-                                >
-                                    {loadingPassword ? "Updating..." : "Update Password"}
-                                </button>
-                            </form>
-                        </div>
-                    </div>
-
-                    {/* LOGOUT */}
-                    <button
-                        onClick={handleLogout}
-                        className="w-full flex items-center justify-center gap-2 bg-white border border-red-100 text-red-600 font-semibold py-3.5 rounded-2xl hover:bg-red-50 transition active:scale-[0.98]"
-                    >
-                        <LogOut size={18} />
-                        Sign Out
-                    </button>
                 </div>
             </div>
 
-            {/* CROP MODAL ENHANCEMENT */}
+            {/* CROP MODAL */}
             {showCropModal && (
-                <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center">
-                    <div className="bg-white rounded-t-3xl sm:rounded-3xl p-6 w-full max-w-md shadow-2xl animate-in slide-in-from-bottom">
-                        <h1 className="text-xl font-bold text-slate-800 mb-4 text-center">Adjust Photo</h1>
+                <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-3xl p-6 w-full max-w-md shadow-2xl animate-in fade-in zoom-in duration-200">
+                        <h1 className="text-xl font-bold text-slate-800 mb-4 text-center">Adjust Profile Photo</h1>
                         <div className="relative w-full h-72 bg-slate-100 rounded-2xl overflow-hidden shadow-inner">
                             <Cropper image={imageSrc} crop={crop} zoom={zoom} aspect={1} onCropChange={setCrop} onZoomChange={setZoom} onCropComplete={onCropComplete} />
                         </div>
                         <div className="mt-6 flex items-center gap-4">
-                            <span className="text-xs font-bold text-slate-400">MIN</span>
+                            <span className="text-xs font-bold text-slate-400 uppercase">Zoom</span>
                             <input type="range" min={1} max={3} step={0.1} value={zoom} onChange={(e) => setZoom(e.target.value)} className="flex-1 accent-indigo-600" />
-                            <span className="text-xs font-bold text-slate-400">MAX</span>
                         </div>
                         <div className="flex gap-3 mt-8">
                             <button onClick={() => setShowCropModal(false)} className="flex-1 py-3 text-slate-600 font-bold hover:bg-slate-50 rounded-xl transition">Cancel</button>
-                            <button onClick={handleCropSave} className="flex-1 py-3 bg-indigo-600 text-white font-bold rounded-xl shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition">Save Changes</button>
+                            <button onClick={handleCropSave} className="flex-1 py-3 bg-indigo-600 text-white font-bold rounded-xl shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition">Save Photo</button>
                         </div>
                     </div>
                 </div>
@@ -210,18 +230,15 @@ export default function Index({ auth, studentData, userInfoData, avatar }) {
 
 function InfoRow({ icon, label, value }) {
     return (
-        <div className="flex items-start gap-3 w-full">
-            {/* Icon container: flex-shrink-0 ensures it doesn't get squished by long text */}
-            <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-indigo-50 text-indigo-500 flex-shrink-0 mt-0.5">
+        <div className="flex items-start gap-4 w-full">
+            <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-slate-50 text-indigo-500 flex-shrink-0">
                 {icon}
             </div>
-            
-            {/* Text container: flex-1 allows it to fill the width and wrap content */}
             <div className="flex-1 min-w-0">
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide leading-none mb-1">
+                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-1">
                     {label}
                 </p>
-                <p className="text-sm font-semibold text-slate-700 leading-relaxed break-words">
+                <p className="text-[13px] font-semibold text-slate-700 leading-tight break-words">
                     {value}
                 </p>
             </div>

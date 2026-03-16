@@ -7,8 +7,8 @@ use Illuminate\Database\Eloquent\Model;
 class Notification extends Model
 {
     protected $fillable = [
-        'courses_id',
-        'year_levels_id',
+        'courses_id', //nullable
+        'year_levels_id', //nullable
         'notifiable_type',
         'data',
         'created_at',

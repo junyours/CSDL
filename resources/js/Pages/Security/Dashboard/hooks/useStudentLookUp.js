@@ -22,7 +22,7 @@ export function useStudentLookup() {
             setStudent(data);
             return data;
         } catch {
-            setError('Student not found.');
+            setError('User not found.');
             setStudent(null);
             return null;
         } finally {

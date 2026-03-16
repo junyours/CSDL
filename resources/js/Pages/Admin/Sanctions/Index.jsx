@@ -98,42 +98,44 @@ export default function Index({ auth, sanctions, filters }) {
 
     return (
         <AppLayout user={user} breadcrumbs={["Setup", "Sanctions"]}>
+            <div className="py-4 px-4">
 
-            <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl p-6 shadow-lg mb-8">
-                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-5">
-                    <div>
-                        <h1 className="text-3xl font-bold tracking-tight">Setup Sanctions</h1>
-                        <p className="text-blue-100 mt-1">
-                            Configure and manage all events in one place.
-                        </p>
-                    </div>
+                <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl p-6 shadow-lg mb-8">
+                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-5">
+                        <div>
+                            <h1 className="text-3xl font-bold tracking-tight">Setup Sanctions</h1>
+                            <p className="text-blue-100 mt-1">
+                                Configure and manage all events in one place.
+                            </p>
+                        </div>
 
-                    <button
-                        onClick={() => setShowCreateModal(true)}
-                        className="bg-white text-blue-700 hover:bg-blue-50 px-4 py-2 rounded-xl text-sm md:text-base font-semibold shadow-md flex items-center gap-2 transition-all duration-200">
-                        <PlusIcon className="h-5 w-5" />
-                        Create New
-                    </button>
-                </div>
-            </div>
-
-            <DataTable
-                columns={columns}
-                data={sanctions}
-                search={filters?.search || ""}
-                onSearch={handleSearch}
-                searchPlaceholder="Search sanctions..."
-                actions={(row) => (
-                    <div className="flex justify-end">
                         <button
-                            onClick={() => handleEdit(row)}
-                            className="text-blue-600 hover:underline text-sm"
-                        >
-                            Update
+                            onClick={() => setShowCreateModal(true)}
+                            className="bg-white text-blue-700 hover:bg-blue-50 px-4 py-2 rounded-xl text-sm md:text-base font-semibold shadow-md flex items-center gap-2 transition-all duration-200">
+                            <PlusIcon className="h-5 w-5" />
+                            Create New
                         </button>
                     </div>
-                )}
-            />
+                </div>
+
+                <DataTable
+                    columns={columns}
+                    data={sanctions}
+                    search={filters?.search || ""}
+                    onSearch={handleSearch}
+                    searchPlaceholder="Search sanctions..."
+                    actions={(row) => (
+                        <div className="flex justify-end">
+                            <button
+                                onClick={() => handleEdit(row)}
+                                className="text-blue-600 hover:underline text-sm"
+                            >
+                                Update
+                            </button>
+                        </div>
+                    )}
+                />
+            </div>
 
             {/* Create Modal */}
             <Modal

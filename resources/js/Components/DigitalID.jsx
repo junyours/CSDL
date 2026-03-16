@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import { QRCodeCanvas } from 'qrcode.react';
 import { motion } from 'framer-motion';
 
@@ -6,7 +6,6 @@ export default function DigitalID({
     userIdNo = "0000-0-00000",
     userProfilePhoto = "/assets/images/proper-profile-photo.jpg",
     studentData = null,
-    userIssue = null,
     userCreatedAt = null,
 }) {
 
@@ -20,21 +19,51 @@ export default function DigitalID({
                     onClick={() => setIsFlipped(!isFlipped)}
                     style={{ perspective: "1000px" }}
                 >
-                    <motion.div
-                        initial={false}
-                        animate={{ rotateY: isFlipped ? 180 : 0 }}
-                        transition={{ duration: 0.6 }}
-                        style={{ transformStyle: "preserve-3d" }}
-                        className="relative w-full h-full"
-                    >
-                        <div
-                            className="absolute inset-0 w-full h-full rounded-xl overflow-hidden bg-white text-black border border-gray-900"
-                            style={{ backfaceVisibility: "hidden" }}
-                        >
+<motion.div
+    // 1. Initial State: Above the screen, tilted back, and transparent
+    initial={{ 
+        y: -100, 
+        opacity: 0, 
+        rotateX: -20, 
+        scale: 0.9 
+    }}
+    // 2. Entrance Animation: Drop to center, flatten out, and fade in
+    animate={{ 
+        y: 0, 
+        opacity: 1, 
+        rotateX: 0, 
+        scale: 1,
+        // This ensures the flip logic still works alongside the entrance
+        rotateY: isFlipped ? 180 : 0 
+    }}
+    // 3. The "Premium" Spring Physics
+    transition={{ 
+        type: "spring",
+        stiffness: 120, // Lower = more "heavy"
+        damping: 12,    // Lower = more "bounce"
+        duration: 0.8,
+        // Delay the entrance slightly so the page layout settles first
+        delay: 0.2 
+    }}
+    style={{ transformStyle: "preserve-3d" }}
+    className="relative w-full h-full p-[1.5px] rounded-[14px] bg-gradient-to-tr from-white/20 via-white/80 to-white/20 shadow-[0_0_30px_rgba(0,0,0,0.2)]"
+>
+                        <div className="absolute inset-0 rounded-[14px] overflow-hidden pointer-events-none">
+                            <div className="absolute inset-0 bg-[conic-gradient(from_0deg,transparent,white,transparent)] opacity-20 animate-[spin_4s_linear_infinite]" />
+                        </div>
 
+                        {/* FRONT SIDE */}
+                        <div
+                            className={`absolute inset-0 w-full h-full rounded-xl overflow-hidden bg-white text-black border border-gray-900 transition-opacity duration-300 ${isFlipped ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
+                            style={{
+                                backfaceVisibility: "hidden",
+                                WebkitBackfaceVisibility: "hidden"
+                            }}
+                        >
                             <div className="absolute inset-0 opacity-[0.05] text-[4px] leading-tight pointer-events-none select-none overflow-hidden uppercase">
                                 {Array(500).fill("OPOL COMMUNITY COLLEGE ").join(" ")}
                             </div>
+
                             <div className="relative flex items-center p-3 border-b border-blue-700 bg-white/80 mb-3">
                                 <img src="/assets/images/school-logo.png" alt="logo" className="h-10 w-auto mr-3" />
                                 <div className="text-center flex-1 leading-tight">
@@ -43,8 +72,9 @@ export default function DigitalID({
                                 </div>
                                 <img src="/assets/images/csdl-logo.jpg" alt="logo" className="h-10 w-auto ml-3" />
                             </div>
+
                             <div className="relative z-10 flex p-3 gap-3">
-                                <div className="w-1/3 flex flex-col items-center">
+                                <div className="w-1/3 flex flex-col items-center justify-center">
                                     <div className="w-20 h-24 border border-gray-500 bg-gray-100 flex items-center justify-center overflow-hidden">
                                         <img
                                             src={
@@ -52,11 +82,14 @@ export default function DigitalID({
                                                     ? `/storage/${userProfilePhoto}`
                                                     : `https://lh3.googleusercontent.com/d/${userProfilePhoto}`
                                             }
-                                            alt="user" className="w-full h-full object-cover" />
+                                            alt="user"
+                                            className="min-w-full min-h-full object-cover object-center block"
+                                        />
                                     </div>
-                                    <p className="text-[6px] mt-1 font-bold text-center leading-none text-gray-500">IDENTIFICATION NUMBER</p>
+                                    <p className="text-[6px] mt-1 font-bold text-center leading-none text-gray-500 uppercase">IDENTIFICATION NUMBER</p>
                                     <p className="text-[11px] font-mono font-bold bg-yellow-50 border border-yellow-200 px-1 mt-1 text-blue-800">{userIdNo}</p>
                                 </div>
+
                                 <div className="w-2/3 text-[9px] flex flex-col pt-1">
                                     <div className="flex justify-between items-start gap-2">
                                         <div className="flex-1 space-y-1.5">
@@ -106,9 +139,14 @@ export default function DigitalID({
                             </div>
                         </div>
 
+                        {/* BACK SIDE */}
                         <div
-                            className="absolute inset-0 w-full h-full rounded-xl shadow-xl overflow-hidden bg-gradient-to-br from-[#0f172a] to-[#1e3a8a] text-white flex flex-col items-center justify-center p-6"
-                            style={{ backfaceVisibility: "hidden", transform: "rotateY(180deg)" }}
+                            className={`absolute inset-0 w-full h-full rounded-xl shadow-xl overflow-hidden bg-gradient-to-br from-[#0f172a] to-[#1e3a8a] text-white flex flex-col items-center justify-center p-6 transition-opacity duration-300 ${!isFlipped ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
+                            style={{
+                                backfaceVisibility: "hidden",
+                                WebkitBackfaceVisibility: "hidden",
+                                transform: "rotateY(180deg)"
+                            }}
                         >
                             <div className="bg-white p-2 rounded-lg shadow-lg">
                                 <QRCodeCanvas
@@ -123,7 +161,7 @@ export default function DigitalID({
                                 />
                             </div>
 
-                            <div className="mt-4 -text-center">
+                            <div className="mt-4 text-center">
                                 <p className="text-[7px] text-blue-300 tracking-widest uppercase">IDENTIFICATION NUMBER</p>
                                 <p className="font-mono text-[15px] font-bold tracking-wider">{userIdNo}</p>
                             </div>
@@ -137,4 +175,3 @@ export default function DigitalID({
         </div>
     );
 }
-

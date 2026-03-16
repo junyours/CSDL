@@ -68,48 +68,52 @@ export default function Index({ auth, users, filters }) {
             label: "Date Registered",
             render: (row) => new Date(row.created_at).toLocaleDateString("en-US", {
                 year: "numeric",
-                month: "short",
+                month: "long",
                 day: "numeric",
+                hh: "2-digit",
+                mm: "2-digit",
             }),
         }
     ];
 
     return (
         <AppLayout user={user} breadcrumbs={["Manage", "Users"]}>
-            {/* Header */}
-            <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl p-6 shadow-lg mb-6">
-                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-5">
-                    <div>
-                        <h1 className="text-3xl font-bold tracking-tight">User Management</h1>
-                        <p className="text-blue-100 mt-1">Configure and manage all users.</p>
-                    </div>
-                    <button
-                        onClick={() => setShowCreateModal(true)}
-                        className="bg-white text-blue-700 hover:bg-blue-50 px-4 py-2 rounded-xl font-semibold shadow-md flex items-center gap-2 transition"
-                    >
-                        <PlusIcon className="h-5 w-5" />
-                        Create New
-                    </button>
-                </div>
-            </div>
-
-            <DataTable
-                columns={columns}
-                data={users}
-                search={filters.search}
-                onSearch={handleSearch}
-                searchPlaceholder="Search by ID or Role..."
-                actions={(row) => (
-                    row.user_role?.toLowerCase() === "student" && (
+            <div className="py-4 px-4">
+                {/* Header */}
+                <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl p-6 shadow-lg mb-6">
+                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-5">
+                        <div>
+                            <h1 className="text-3xl font-bold tracking-tight">User Management</h1>
+                            <p className="text-blue-100 mt-1">Configure and manage all users.</p>
+                        </div>
                         <button
-                            onClick={() => handleManageClick(row.id, row.user_id_no)}
-                            className="text-blue-600 hover:underline text-sm"
+                            onClick={() => setShowCreateModal(true)}
+                            className="bg-white text-blue-700 hover:bg-blue-50 px-4 py-2 rounded-xl font-semibold shadow-md flex items-center gap-2 transition"
                         >
-                            Manage
+                            <PlusIcon className="h-5 w-5" />
+                            Create New
                         </button>
-                    )
-                )}
-            />
+                    </div>
+                </div>
+
+                <DataTable
+                    columns={columns}
+                    data={users}
+                    search={filters.search}
+                    onSearch={handleSearch}
+                    searchPlaceholder="Search by ID or Role..."
+                    actions={(row) => (
+                        row.user_role?.toLowerCase() === "student" && (
+                            <button
+                                onClick={() => handleManageClick(row.id, row.user_id_no)}
+                                className="text-blue-600 hover:underline text-sm"
+                            >
+                                Manage
+                            </button>
+                        )
+                    )}
+                />
+            </div>
 
             {/* Modals */}
             <Modal isOpen={showCreateModal} onClose={() => setShowCreateModal(false)} title="Create User">

@@ -4,7 +4,7 @@ import { router } from "@inertiajs/react";
 import { useEffect, useState } from "react";
 import { toast } from "react-hot-toast";
 import axios from "axios";
-import { AlertCircle, TrendingUp, UserX, BarChart3, ExternalLink } from "lucide-react";
+import { AlertCircle, TrendingUp, UserX, BarChart3, ExternalLink, ChevronRight } from "lucide-react";
 import { ArrowTopRightOnSquareIcon, ChartBarIcon, ExclamationTriangleIcon, UserMinusIcon } from "@heroicons/react/24/outline";
 
 export default function Index({
@@ -12,7 +12,8 @@ export default function Index({
     violations,
     filters,
     topViolationCodesToday,
-    topUserUnsettledAllTime // Renamed to match the new controller prop
+    totalViolationsToday,
+    usersWithManyUnsettled
 }) {
     const user = auth?.user;
     const [violationsData, setViolationsData] = useState(violations);
@@ -55,7 +56,7 @@ export default function Index({
             render: (row) => (
                 <span>
                     {new Date(row.issued_date_time).toLocaleString("en-PH", {
-                        year: "numeric", month: "short", day: "2-digit",
+                        year: "numeric", month: "numeric", day: "2-digit",
                         hour: "2-digit", minute: "2-digit", hour12: true,
                     })}
                 </span>
@@ -84,7 +85,7 @@ export default function Index({
             render: (row) => (
                 <div className="flex flex-wrap gap-2">
                     {row.violation_codes?.map((code, i) => (
-                        <span key={i} className="px-2 py-1 text-xs bg-red-100 text-red-700 rounded-full">
+                        <span key={i} className="px-2 py-1 text-xs bg-red-100 text-red-700 rounded-md font-semibold border border-red-200">
                             {code}
                         </span>
                     ))}
@@ -106,7 +107,7 @@ export default function Index({
                         )}
                         {sanction.sanction_type === "service" && (
                             <span className="text-xs px-2 py-1 rounded-full text-blue-700">
-                                {sanction.service_time} {sanction.service_time_type} - {sanction.sanction_name}
+                                {sanction.service_time} {sanction.service_time_type} - <span className="text-blue-700 font-semibold border border-blue-200 px-2 py-1 rounded-md"> {sanction.sanction_name} </span>
                             </span>
                         )}
                     </span>
@@ -125,7 +126,7 @@ export default function Index({
                 <select
                     value={row.status}
                     onChange={handleStatusChange(row)}
-                    className={`px-2 py-1 text-xs uppercase rounded-full font-medium ${row.status === "settled" ? "bg-green-100 text-green-700" :
+                    className={`px-2 py-1 text-xs uppercase rounded-md font-medium ${row.status === "settled" ? "bg-green-100 text-green-700" :
                         row.status === "void" ? "bg-gray-100 text-gray-700" : "bg-yellow-100 text-yellow-700"
                         }`}
                 >
@@ -139,109 +140,120 @@ export default function Index({
 
     return (
         <AppLayout user={user} breadcrumbs={["Manage", "Violations Records"]}>
-            <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl p-6 shadow-lg mb-8">
-                <h1 className="text-3xl font-bold tracking-tight">Violations Records Management</h1>
-                <p className="text-blue-100 mt-1">View and manage all violation records.</p>
-            </div>
-
-            {/* Analytics Section */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                {/* Top Violations Today */}
-                {topViolationCodesToday?.map((item, index) => (
-                    <div
-                        key={index}
-                        className="relative overflow-hidden bg-white border border-gray-100 rounded-2xl shadow-sm p-5 hover:shadow-md transition-all group"
-                    >
-                        {/* Decorative Background Icon */}
-                        <ChartBarIcon className="absolute -right-4 -bottom-4 h-24 w-24 text-gray-50 opacity-10 group-hover:scale-110 transition-transform" />
-
-                        <div className="flex items-start justify-between">
-                            <div>
-                                <p className="text-[10px] font-bold text-red-500 uppercase tracking-widest">
-                                    Trending Today #{index + 1}
-                                </p>
-                                <h2 className="text-3xl font-black text-gray-800 mt-1 tracking-tight">
-                                    {item.violation_code}
-                                </h2>
-                            </div>
-                            <div className="bg-red-50 p-2 rounded-lg">
-                                <ExclamationTriangleIcon className="h-5 w-5 text-red-600" />
-                            </div>
-                        </div>
-
-                        <div className="mt-4 flex items-center gap-2">
-                            <span className="text-2xl font-bold text-gray-900">{item.total}</span>
-                            <span className="text-sm text-gray-500 font-medium">Recorded Cases</span>
-                        </div>
-
-                        {/* Progress Bar Visual */}
-                        <div className="w-full bg-gray-100 h-1.5 rounded-full mt-3 overflow-hidden">
-                            <div className="bg-red-500 h-full rounded-full" style={{ width: '70%' }}></div>
-                        </div>
-                    </div>
-                ))}
-
-                {/* Enhanced Top Unsettled Violator Card */}
-                <div className="relative overflow-hidden bg-white border-2 border-indigo-50 rounded-2xl shadow-sm p-5 hover:shadow-md transition-all group lg:col-span-1">
-                    <UserMinusIcon className="absolute -right-4 -bottom-4 h-24 w-24 text-indigo-50 opacity-20 group-hover:scale-110 transition-transform" />
-
-                    <div className="flex items-start justify-between relative z-10">
-                        <div>
-                            <p className="text-[10px] font-bold text-indigo-500 uppercase tracking-widest">
-                                Critical Attention
-                            </p>
-                            <div
-                                className="flex items-center gap-1 group/link mt-1 cursor-pointer"
-                                onClick={() => {
-                                    if (topUserUnsettledAllTime?.user_id) {
-                                        const url = `/manage-user/${topUserUnsettledAllTime.user_id}/show?user_id_no=${topUserUnsettledAllTime.user_id_no}`;
-                                        window.open(url, '_blank');
-                                    }
-                                }}
-                            >
-                                <h2 className="text-2xl font-black text-gray-800 group-hover/link:text-indigo-600 transition-colors">
-                                    {topUserUnsettledAllTime?.user_id_no ?? "—"}
-                                </h2>
-                                <ArrowTopRightOnSquareIcon className="h-4 w-4 text-gray-400 group-hover/link:text-indigo-600 transition-colors" />
-                            </div>
-                        </div>
-                        <div className="bg-indigo-50 p-2 rounded-lg">
-                            <div className="animate-pulse h-2 w-2 bg-indigo-600 rounded-full absolute -top-1 -right-1"></div>
-                            <UserMinusIcon className="h-5 w-5 text-indigo-600" />
-                        </div>
-                    </div>
-
-                    <p className="text-sm text-gray-600 mt-2 font-medium">
-                        Owner of <span className="text-red-600 font-bold underline decoration-2">{topUserUnsettledAllTime?.total_unsettled ?? 0}</span> unsettled records
-                    </p>
-
-                    {/* Breakdown List - Modernized */}
-                    {topUserUnsettledAllTime?.violations_breakdown && (
-                        <div className="mt-4 pt-4 border-t border-dashed border-gray-200 relative z-10">
-                            <p className="text-[10px] text-gray-400 uppercase font-black mb-2 tracking-tighter">Frequency Breakdown</p>
-                            <div className="grid grid-cols-1 gap-2">
-                                {topUserUnsettledAllTime.violations_breakdown.slice(0, 3).map((v, i) => (
-                                    <div key={i} className="flex justify-between items-center bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-100">
-                                        <span className="text-xs font-bold text-gray-700">{v.code}</span>
-                                        <span className="text-[10px] font-black bg-white border px-2 py-0.5 rounded shadow-sm text-gray-900">
-                                            x{v.count}
-                                        </span>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    )}
+            <div className="py-4 px-4">
+                <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl p-6 shadow-lg mb-8">
+                    <h1 className="text-3xl font-bold tracking-tight">Violations Records Management</h1>
+                    <p className="text-blue-100 mt-1">View and manage all violation records.</p>
                 </div>
-            </div>
 
-            <DataTable
-                columns={columns}
-                data={violationsData}
-                search={filters?.search}
-                onSearch={handleSearch}
-                searchPlaceholder="Search reference number or ID number..."
-                exportRoute="/manage-violation-records/export"
-            />
-        </AppLayout>
+                {/* Analytics Section */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+
+                    {/* TOTAL VIOLATIONS TODAY */}
+                    <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm hover:shadow-md hover:scale-[1.02] transition-all duration-200 flex flex-col justify-between">
+                        <div>
+                            <div className="flex items-center justify-between mb-4">
+                                <p className="text-[10px] uppercase text-slate-400 font-bold tracking-widest">
+                                    Violations Today
+                                </p>
+                                <div className="bg-red-50 p-2.5 rounded-lg">
+                                    <AlertCircle className="h-5 w-5 text-red-600" />
+                                </div>
+                            </div>
+                            <h2 className="text-5xl font-black text-slate-800 tracking-tight">
+                                {totalViolationsToday}
+                            </h2>
+                        </div>
+                        <p className="text-sm text-slate-500 mt-6 flex items-center gap-2">
+                            <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
+                            Live updates from today's records
+                        </p>
+                    </div>
+
+                    {/* TOP PICKED VIOLATIONS */}
+                    <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm hover:shadow-md hover:scale-[1.02] transition-all duration-200">
+                        <div className="flex items-center justify-between mb-6">
+                            <p className="text-[10px] uppercase text-slate-400 font-bold tracking-widest">
+                                Top Violations
+                            </p>
+                            <TrendingUp className="h-5 w-5 text-amber-500" />
+                        </div>
+
+                        <div className="space-y-3">
+                            {topViolationCodesToday?.length > 0 ? (
+                                topViolationCodesToday.map((item, index) => (
+                                    <div key={index} className="relative overflow-hidden group">
+                                        <div className="flex items-center justify-between relative z-10 px-3 py-2">
+                                            <span className="font-bold text-slate-700 text-sm">
+                                                {item.violation_code}
+                                            </span>
+                                            <span className="text-xs font-black bg-white px-2 py-1 rounded shadow-sm border border-slate-100">
+                                                {item.total}
+                                            </span>
+                                        </div>
+                                        {/* Progress Bar Background */}
+                                        <div className="absolute inset-0 bg-slate-50 rounded-lg -z-0"></div>
+                                        <div
+                                            className="absolute inset-y-0 left-0 bg-red-100/50 rounded-lg -z-0 transition-all duration-500"
+                                            style={{ width: `${(item.total / totalViolationsToday) * 100}%` }}
+                                        ></div>
+                                    </div>
+                                ))
+                            ) : (
+                                <p className="text-sm text-slate-400 italic">No data available yet</p>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* HIGH RISK USERS */}
+                    <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm hover:shadow-md hover:scale-[1.02] transition-all duration-200">
+                        <div className="flex items-center justify-between mb-6">
+                            <p className="text-[10px] uppercase text-slate-400 font-bold tracking-widest">
+                                High Risk Users
+                            </p>
+                            <UserX className="h-5 w-5 text-indigo-600" />
+                        </div>
+
+                        <div className="space-y-2 max-h-[180px] overflow-y-auto pr-2 custom-scrollbar">
+                            {usersWithManyUnsettled?.length === 0 ? (
+                                <div className="text-center py-4">
+                                    <p className="text-sm text-slate-400">All clear. No high risk users.</p>
+                                </div>
+                            ) : (
+                                usersWithManyUnsettled?.map((user, index) => (
+                                    <button
+                                        key={index}
+                                        onClick={() => {
+                                            const url = `/manage-user/${user.user_id}/show?user_id_no=${user.user_id_no}`;
+                                            window.open(url, "_blank");
+                                        }}
+                                        className="w-full flex items-center justify-between px-4 py-3 rounded-xl border border-slate-100 bg-white hover:border-indigo-300 hover:bg-indigo-50/30 transition-all group"
+                                    >
+                                        <span className="font-medium text-slate-700 group-hover:text-indigo-700 transition-colors">
+                                            {user.user_id_no}
+                                        </span>
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-xs font-bold text-red-600 bg-red-50 px-2 py-1 rounded-md">
+                                                {user.total_unsettled}
+                                            </span>
+                                            <ChevronRight className="h-3 w-3 text-slate-300 group-hover:text-indigo-400" />
+                                        </div>
+                                    </button>
+                                ))
+                            )}
+                        </div>
+                    </div>
+                </div>
+
+                <DataTable
+                    columns={columns}
+                    data={violationsData}
+                    search={filters?.search}
+                    onSearch={handleSearch}
+                    searchPlaceholder="Search reference number or ID number..."
+                    exportRoute="/manage-violation-records/export"
+                />
+            </div>
+        </AppLayout >
     );
 }

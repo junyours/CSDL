@@ -24,7 +24,7 @@ export default function StudentResultModal({
     const [showReceiptModal, setShowReceiptModal] = useState(false);
 
     const openViolationModal = async () => {
-        onClose(); // close StudentResultModal
+        onClose();
         setShowViolationModal(true);
 
         if (violations.length === 0) {

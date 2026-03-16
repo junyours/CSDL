@@ -18,28 +18,15 @@ export default function Dashboard({ auth, unsettledCount, studentData }) {
 
     return (
         <AppLayout user={user}>
-            {/* Reduced padding on mobile (px-4), kept original on desktop */}
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8 pb-24">
+            <div className="max-w-7xl mx-auto sm:px-6 lg:px-8 py-2 px-2 md:py-8">
 
-                {/* --- HERO SECTION --- */}
-                <header className="mb-6 md:mb-10 flex flex-col md:flex-row md:items-end justify-between gap-4">
-                    <div className="space-y-1">
-                        <div className="inline-flex items-center gap-2 px-2 py-1 rounded-md bg-indigo-50 text-indigo-600 font-bold text-[10px] uppercase tracking-widest mb-1 md:mb-2">
-                            <Zap size={12} fill="currentColor" />
-                            Overview
-                        </div>
-                        {/* Scaled down text for mobile (text-3xl) */}
+                <header className="mb-6 px-3 py-4 md:mb-10 flex flex-col md:flex-row md:items-end justify-between gap-4">
+                    <div>
                         <h1 className="text-3xl md:text-4xl font-extrabold text-slate-900 tracking-tight">
                             {greeting}, <span className="text-indigo-600">{firstName}</span>
                         </h1>
-                        <p className="text-slate-500 text-sm md:text-base font-medium flex items-center gap-2">
-                            {unsettledCount > 0
-                                ? "You have items that require attention."
-                                : "Your account is in good standing."}
-                        </p>
                     </div>
 
-                    {/* Date Display: Now visible on mobile but smaller/subtle */}
                     <div className="flex items-center gap-2 md:gap-3 text-slate-400 bg-slate-50 self-start md:self-auto px-3 py-1.5 md:px-4 md:py-2 rounded-xl md:rounded-2xl border border-slate-100">
                         <Calendar size={16} className="md:w-[18px]" />
                         <span className="text-[10px] md:text-sm font-semibold uppercase tracking-tight">
@@ -48,21 +35,14 @@ export default function Dashboard({ auth, unsettledCount, studentData }) {
                     </div>
                 </header>
 
-                {/* --- MAIN BENTO GRID --- */}
-                {/* Changed gap to 4 on mobile for tighter look */}
-                <div className="grid grid-cols-1 md:grid-cols-6 lg:grid-cols-12 gap-4 md:gap-6">
+                <div className="grid grid-cols-1 px-3 md:grid-cols-6 lg:grid-cols-12 gap-4 md:gap-6">
 
-                    {/* COMPLIANCE/VIOLATION CARD */}
                     <div className={`md:col-span-3 lg:col-span-4 group relative overflow-hidden p-6 md:p-8 rounded-3xl md:rounded-[2rem] border transition-all duration-500 ${unsettledCount > 0
                         ? 'bg-white border-red-100 shadow-lg shadow-red-500/5'
                         : 'bg-white border-emerald-100 shadow-lg shadow-emerald-500/5'
                         }`}>
-                        
-                       
-
                         <div className="space-y-1">
                             <div className="flex items-baseline gap-3">
-                                {/* Scaled down 7xl to 5xl on mobile */}
                                 <span className={`text-5xl md:text-7xl font-black tracking-tighter ${unsettledCount > 0 ? 'text-red-600' : 'text-slate-900'}`}>
                                     {unsettledCount}
                                 </span>
@@ -70,7 +50,7 @@ export default function Dashboard({ auth, unsettledCount, studentData }) {
                             <h3 className="text-lg font-bold text-slate-800">Pending Violations</h3>
                             <p className="text-slate-500 text-sm leading-relaxed max-w-[240px]">
                                 {unsettledCount > 0
-                                    ? "Please settle these records to avoid registration blocks."
+                                    ? "Please settle these records to avoid clearance conflicts."
                                     : "You're all clear! No violations recorded."}
                             </p>
                         </div>
@@ -87,7 +67,6 @@ export default function Dashboard({ auth, unsettledCount, studentData }) {
                         </button>
                     </div>
 
-                    {/* ACADEMIC RECORDS */}
                     <a
                         href="https://sis.occph.com/enrollment-record"
                         target="_blank"
@@ -113,7 +92,6 @@ export default function Dashboard({ auth, unsettledCount, studentData }) {
                         </div>
                     </a>
 
-                    {/* NEWS & UPDATES */}
                     <a
                         href="https://occ.edu.ph/news"
                         target="_blank"

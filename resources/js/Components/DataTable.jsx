@@ -36,7 +36,7 @@ export default function DataTable({
     const hasData = data?.data && data.data.length > 0;
 
     return (
-        <div className="bg-white shadow-sm border rounded-lg p-4 mb-20">
+        <div className="bg-white shadow-sm border rounded-lg p-4">
             {/* Search Bar */}
             <div className="flex flex-col sm:flex-row sm:justify-between items-center gap-3 mb-6">
                 <input
@@ -57,7 +57,7 @@ export default function DataTable({
                         onClick={() =>
                             window.location.href = `${exportRoute}?search=${searchValue}`
                         }
-                        className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition"
+                        className="px-4 py-2 bg-green-600 w-full md:w-auto text-white rounded-md hover:bg-green-700 transition"
                     >
                         Export as PDF
                     </button>

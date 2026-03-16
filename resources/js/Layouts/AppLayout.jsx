@@ -37,7 +37,7 @@ export default function AppLayout({ children, user, breadcrumbs = [] }) {
                 />
 
                 <main className="flex-1 overflow-y-auto overflow-x-hidden">
-                    <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 py-6">
+                    <div className="w-full max-w-7xl mx-auto">
                         {children}
                     </div>
                 </main>

@@ -6,8 +6,9 @@ use App\Http\Controllers\Admin\LocationController;
 use App\Http\Controllers\Admin\SanctionController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\ViolationController;
-use App\Http\Controllers\AuthController;
 use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\NotificationUserController;
 use App\Http\Controllers\Student\DigitalIdController;
 use App\Http\Controllers\UserViolationRecordController;
 use App\Http\Controllers\UserProfileController;
@@ -26,6 +27,9 @@ Route::post('/register', [LoginController::class, 'register'])->name('register.s
 
 // AUTH ONLY
 Route::middleware(['auth'])->group(function () {
+    Route::get('/user-notifications', [NotificationUserController::class, 'index']);
+    Route::post('/notifications/mark-all-read', [NotificationUserController::class, 'markAllRead']);
+    Route::post('/notifications/{id}/mark-as-read', [NotificationUserController::class, 'markAsRead']);
 
     Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
     Route::get('/profile', [UserProfileController::class, 'index'])->name('profile.index');

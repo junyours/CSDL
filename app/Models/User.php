@@ -4,6 +4,7 @@ namespace App\Models;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Laravel\Sanctum\HasApiTokens;
 use Illuminate\Notifications\Notifiable;
+use App\Models\UserInformation;
 
 class User extends Authenticatable
 {
@@ -43,5 +44,10 @@ class User extends Authenticatable
     public function setUserIdNoAttribute($value)
     {
         $this->attributes['user_id_no'] = strtoupper($value);
+    }
+
+    public function information()
+    {
+        return $this->hasOne(UserInformation::class, 'user_id_no', 'user_id_no');
     }
 }
