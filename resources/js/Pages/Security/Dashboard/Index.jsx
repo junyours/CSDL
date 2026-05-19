@@ -3,7 +3,7 @@ import { Typography, Card, Button, Input, Divider, Avatar } from "antd";
 import { CalendarOutlined, FileTextOutlined, ScanOutlined, SearchOutlined } from "@ant-design/icons";
 import CountUp from "react-countup";
 import { useState } from "react";
-import QrScannerDrawer from "./components/QRScannerDrawer";
+import QrScannerDrawer from "./components/QrScannerDrawer";
 import { Divide } from "lucide-react";
 import Footer from "../../../Components/Footer";
 import ShowResult from "./components/ShowResult";
