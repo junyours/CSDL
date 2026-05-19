@@ -17,15 +17,10 @@ class LoginController extends Controller
 {
     public function show()
     {
-        // If user is already logged in, redirect them based on their role
-        if (Auth::check()) {
-            return $this->redirectBasedOnRole();
-        }
-
-        return Inertia::render('Auth/Login');
+        return redirect('/');
     }
 
-    public function login(Request $request)
+    public function login(Request $request, SisApiService $sisApi)
     {
         $validated = $request->validate([
             'user_id_no' => 'required|string',
@@ -44,8 +39,40 @@ class LoginController extends Controller
 
         $user = auth()->user();
 
+        if ($user->user_role === 'student') {
+
+            $students = $this->fetchStudentData($user->user_id_no, $sisApi);
+
+            if ($students->isEmpty()) {
+                Auth::logout();
+
+                return response()->json([
+                    'errors' => [
+                        'user_id_no' => ['Student record not found.']
+                    ]
+                ], 422);
+            }
+
+            $student = $students->first();
+
+            $enrolledCurrent = collect($student['enrolled_students'] ?? [])
+                ->contains(function ($enroll) {
+                    return data_get($enroll, 'year_section.school_year.is_current') == 1;
+                });
+
+            if (!$enrolledCurrent) {
+                Auth::logout();
+
+                return response()->json([
+                    'errors' => [
+                        'user_id_no' => ['You are not enrolled in the current school year.']
+                    ]
+                ], 403);
+            }
+        }
+
         $redirect = match ($user->user_role) {
-            'super_admin' => route('superadmin.dashboard'),
+            'guidance_counselor' => route('guidancecounselor.dashboard'),
             'admin' => route('admin.dashboard'),
             'security' => route('security.dashboard'),
             'student' => route('student.dashboard'),
@@ -63,7 +90,7 @@ class LoginController extends Controller
         Auth::guard('web')->logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();
-        return redirect('/login');
+        return redirect('/');
     }
 
     /**

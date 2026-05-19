@@ -2,179 +2,123 @@ import { useEffect, useRef } from "react";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 
-export default function Map({ center = [0, 0], zoom = 10, polygon }) {
-  const mapContainer = useRef(null);
-  const map = useRef(null);
+export default function Map({
+    center = [0, 0],
+    zoom = 10,
+    polygon,
+    theme = "dark", // 👈 NEW
+}) {
+    const mapContainer = useRef(null);
+    const map = useRef(null);
 
-  useEffect(() => {
-    mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN;
-
-    if (map.current) return;
-
-    map.current = new mapboxgl.Map({
-      container: mapContainer.current,
-      style: "mapbox://styles/mapbox/streets-v12",
-      center,
-      zoom,
-    });
-
-    // Ensure map resizes with container
-    const resizeObserver = new ResizeObserver(() => map.current.resize());
-    resizeObserver.observe(mapContainer.current);
-
-    return () => resizeObserver.disconnect();
-  }, []);
-
-  useEffect(() => {
-    if (!map.current || !polygon) return;
-
-    const m = map.current;
-
-    let normalized = polygon.map((pt) =>
-      pt.lat !== undefined && pt.lng !== undefined ? [pt.lng, pt.lat] : pt
-    );
-
-    const first = normalized[0];
-    const last = normalized[normalized.length - 1];
-    if (first[0] !== last[0] || first[1] !== last[1]) {
-      normalized.push(first);
-    }
-
-    const drawPolygon = () => {
-      if (m.getLayer("polygon-layer")) m.removeLayer("polygon-layer");
-      if (m.getSource("polygon-source")) m.removeSource("polygon-source");
-
-      m.addSource("polygon-source", {
-        type: "geojson",
-        data: {
-          type: "Feature",
-          geometry: { type: "Polygon", coordinates: [normalized] },
-        },
-      });
-
-      m.addLayer({
-        id: "polygon-layer",
-        type: "fill",
-        source: "polygon-source",
-        paint: { "fill-color": "#3b82f6", "fill-opacity": 0.3 },
-      });
-
-      const bounds = new mapboxgl.LngLatBounds();
-      normalized.forEach((pt) => bounds.extend(pt));
-
-      m.fitBounds(bounds, { padding: 40 });
+    const getMapStyle = () => {
+        return theme === "dark"
+            ? "mapbox://styles/mapbox/dark-v11"
+            : "mapbox://styles/mapbox/streets-v12";
     };
 
-    if (m.loaded()) drawPolygon();
-    else m.once("load", drawPolygon);
-  }, [polygon]);
+    // INIT MAP
+    useEffect(() => {
+        mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN;
 
-  // Use h-full so map fills parent container height
-  return <div ref={mapContainer} className="w-full h-full rounded" />;
+        if (map.current) return;
+
+        map.current = new mapboxgl.Map({
+            container: mapContainer.current,
+            style: getMapStyle(),
+            center,
+            zoom,
+        });
+
+        // Resize observer
+        const resizeObserver = new ResizeObserver(() => {
+            map.current?.resize();
+        });
+
+        resizeObserver.observe(mapContainer.current);
+
+        return () => resizeObserver.disconnect();
+    }, []);
+
+    useEffect(() => {
+        if (!map.current) return;
+
+        const m = map.current;
+
+        // change style dynamically
+        m.setStyle(getMapStyle());
+
+        m.once("style.load", () => {
+            if (polygon) drawPolygon(m, polygon);
+        });
+    }, [theme]);
+
+    // DRAW POLYGON FUNCTION (reusable)
+    const drawPolygon = (m, polygonData) => {
+        let normalized = polygonData.map((pt) =>
+            pt.lat !== undefined && pt.lng !== undefined
+                ? [pt.lng, pt.lat]
+                : pt
+        );
+
+        const first = normalized[0];
+        const last = normalized[normalized.length - 1];
+        if (first[0] !== last[0] || first[1] !== last[1]) {
+            normalized.push(first);
+        }
+
+        if (m.getLayer("polygon-layer")) m.removeLayer("polygon-layer");
+        if (m.getSource("polygon-source")) m.removeSource("polygon-source");
+
+        m.addSource("polygon-source", {
+            type: "geojson",
+            data: {
+                type: "Feature",
+                geometry: {
+                    type: "Polygon",
+                    coordinates: [normalized],
+                },
+            },
+        });
+
+        m.addLayer({
+            id: "polygon-layer",
+            type: "fill",
+            source: "polygon-source",
+            paint: {
+                "fill-color": "#1677ff", // Ant Design primary
+                "fill-opacity": 0.3,
+            },
+        });
+
+        const bounds = new mapboxgl.LngLatBounds();
+        normalized.forEach((pt) => bounds.extend(pt));
+
+        m.fitBounds(bounds, { padding: 40 });
+    };
+
+    // POLYGON EFFECT
+    useEffect(() => {
+        if (!map.current || !polygon) return;
+
+        const m = map.current;
+
+        if (m.isStyleLoaded()) {
+            drawPolygon(m, polygon);
+        } else {
+            m.once("load", () => drawPolygon(m, polygon));
+        }
+    }, [polygon]);
+
+    return (
+        <div
+            ref={mapContainer}
+            style={{
+                width: "100%",
+                height: "100%",
+                borderRadius: 8,
+                overflow: "hidden",
+            }}
+        />
+    );
 }
-
-
-
-
-
-
-
-// import { useEffect, useRef } from "react";
-// import mapboxgl from "mapbox-gl";
-// import MapboxGeocoder from "@mapbox/mapbox-gl-geocoder";
-// import "mapbox-gl/dist/mapbox-gl.css";
-// import "@mapbox/mapbox-gl-geocoder/dist/mapbox-gl-geocoder.css";
-
-// export default function Map({ center = [0, 0], zoom = 10, polygon }) {
-//     const mapContainer = useRef(null);
-//     const map = useRef(null);
-//     const markerRef = useRef(null); // to track marker
-
-//     useEffect(() => {
-//         mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN;
-
-//         if (map.current) return;
-
-//         map.current = new mapboxgl.Map({
-//             container: mapContainer.current,
-//             style: "mapbox://styles/mapbox/streets-v12",
-//             center,
-//             zoom,
-//         });
-
-//         // --- Add Search (Geocoder) ---
-//         const geocoder = new MapboxGeocoder({
-//             accessToken: mapboxgl.accessToken,
-//             mapboxgl: mapboxgl,
-//             marker: false, // disable default marker
-//             placeholder: "Search for a location...",
-//         });
-
-//         map.current.addControl(geocoder, "top-left");
-
-//         // --- Add a marker when a search result is selected ---
-//         geocoder.on("result", (event) => {
-//             const [lng, lat] = event.result.center;
-
-//             // Remove previous marker if exists
-//             if (markerRef.current) {
-//                 markerRef.current.remove();
-//             }
-
-//             // Add new marker
-//             markerRef.current = new mapboxgl.Marker({ color: "red" })
-//                 .setLngLat([lng, lat])
-//                 .addTo(map.current);
-
-//             // Optional: Recenter map to the search result
-//             map.current.flyTo({ center: [lng, lat], zoom: 15 });
-//         });
-//     }, []);
-
-//     useEffect(() => {
-//         if (!map.current || !polygon) return;
-
-//         const m = map.current;
-
-//         let normalized = polygon.map((pt) => {
-//             if (pt.lat !== undefined && pt.lng !== undefined) return [pt.lng, pt.lat];
-//             return pt;
-//         });
-
-//         // Ensure polygon is closed
-//         const first = normalized[0];
-//         const last = normalized[normalized.length - 1];
-//         if (first[0] !== last[0] || first[1] !== last[1]) {
-//             normalized.push(first);
-//         }
-
-//         const drawPolygon = () => {
-//             if (m.getLayer("polygon-layer")) m.removeLayer("polygon-layer");
-//             if (m.getSource("polygon-source")) m.removeSource("polygon-source");
-
-//             m.addSource("polygon-source", {
-//                 type: "geojson",
-//                 data: {
-//                     type: "Feature",
-//                     geometry: { type: "Polygon", coordinates: [normalized] },
-//                 },
-//             });
-
-//             m.addLayer({
-//                 id: "polygon-layer",
-//                 type: "fill",
-//                 source: "polygon-source",
-//                 paint: { "fill-color": "#3b82f6", "fill-opacity": 0.3 },
-//             });
-
-//             const bounds = new mapboxgl.LngLatBounds();
-//             normalized.forEach((pt) => bounds.extend(pt));
-//             m.fitBounds(bounds, { padding: 40 });
-//         };
-
-//         if (m.loaded()) drawPolygon();
-//         else m.once("load", drawPolygon);
-//     }, [polygon]);
-
-//     return <div ref={mapContainer} className="w-full h-96 rounded" />;
-// }

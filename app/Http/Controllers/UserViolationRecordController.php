@@ -8,6 +8,12 @@ use App\Models\Sanction;
 use App\Models\User;
 use App\Models\UserViolationRecord;
 use App\Models\Violation;
+use App\Services\SisApiService;
+use BaconQrCode\Encoder\QrCode;
+use BaconQrCode\Renderer\Image\SvgImageBackEnd;
+use BaconQrCode\Renderer\ImageRenderer;
+use BaconQrCode\Renderer\RendererStyle\RendererStyle;
+use BaconQrCode\Writer;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\Request;
@@ -115,6 +121,7 @@ class UserViolationRecordController extends Controller
     {
         $violations = UserViolationRecord::with(['sanction', 'issuer'])
             ->where('user_id', auth()->id())
+            ->where('status', 'unsettled')
             ->latest('issued_date_time')
             ->paginate(10)
             ->withQueryString();
@@ -145,6 +152,7 @@ class UserViolationRecordController extends Controller
     {
         $search = $request->search;
 
+        // MAIN QUERY (ONLY UNSETTLED)
         $violations = UserViolationRecord::query()
             ->select([
                 'id',
@@ -155,23 +163,29 @@ class UserViolationRecordController extends Controller
                 'status',
                 'issued_date_time',
                 'violation_ids',
+                'updated_at'
             ])
+            ->where('status', 'unsettled')
             ->with([
                 'user:id,user_id_no',
                 'issuer:id,user_id_no',
                 'sanction:id,sanction_type,monetary_amount,service_time,service_time_type,sanction_name',
             ])
             ->when($search, function ($query) use ($search) {
-                $query->where('reference_no', 'like', "%{$search}%")
-                    ->orWhereHas('user', function ($q) use ($search) {
-                        $q->where('user_id_no', 'like', "%{$search}%");
-                    });
+                $query->where(function ($q) use ($search) {
+                    $q->where('reference_no', 'like', "%{$search}%")
+                        ->orWhereHas('user', function ($q2) use ($search) {
+                            $q2->where('user_id_no', 'like', "%{$search}%");
+                        });
+                });
             })
             ->latest('issued_date_time')
             ->paginate(20)
             ->withQueryString();
 
-        //COLLECT ALL VIOLATION IDS
+        $totalUnsettledRecords = UserViolationRecord::where('status', 'unsettled')->count();
+
+        // COLLECT ALL VIOLATION IDS
         $allViolationIds = collect($violations->items())
             ->pluck('violation_ids')
             ->flatten()
@@ -182,7 +196,7 @@ class UserViolationRecordController extends Controller
         $violationMap = Violation::whereIn('id', $allViolationIds)
             ->pluck('violation_code', 'id');
 
-        //TRANSFORM TABLE DATA
+        // TRANSFORM TABLE DATA
         $violations->getCollection()->transform(function ($record) use ($violationMap) {
 
             return [
@@ -190,6 +204,7 @@ class UserViolationRecordController extends Controller
                 'reference_no' => $record->reference_no,
                 'issued_date_time' => $record->issued_date_time,
                 'status' => $record->status,
+                'updated_at' => $record->updated_at,
 
                 'user' => [
                     'user_id_no' => $record->user?->user_id_no,
@@ -215,16 +230,12 @@ class UserViolationRecordController extends Controller
             ];
         });
 
-       //TOTAL VIOLATIONS TODAY
-       
-
+        // TOTAL VIOLATIONS TODAY
         $today = now()->toDateString();
 
         $totalViolationsToday = UserViolationRecord::whereDate('issued_date_time', $today)->count();
 
-        //TOP 3 VIOLATION CODES TODAY
-
-
+        // TOP 3 VIOLATION CODES TODAY
         $todayViolationIds = UserViolationRecord::whereDate('issued_date_time', $today)
             ->pluck('violation_ids')
             ->flatten()
@@ -244,8 +255,7 @@ class UserViolationRecordController extends Controller
                 ];
             })->values();
 
-        //USERS WITH MORE THAN 10 UNSETTLED
-
+        // USERS WITH MORE THAN 10 UNSETTLED
         $usersWithManyUnsettled = UserViolationRecord::where('status', 'unsettled')
             ->selectRaw('user_id, COUNT(*) as total')
             ->groupBy('user_id')
@@ -267,10 +277,10 @@ class UserViolationRecordController extends Controller
             'violations' => $violations,
             'filters' => $request->only('search'),
 
+            'totalUnsettledRecords' => $totalUnsettledRecords,
+
             'totalViolationsToday' => $totalViolationsToday,
-
             'topViolationCodesToday' => $topViolationCodesToday,
-
             'usersWithManyUnsettled' => $usersWithManyUnsettled,
 
         ]);
@@ -282,23 +292,74 @@ class UserViolationRecordController extends Controller
             'status' => 'required|in:unsettled,settled,void',
         ]);
 
-        $violation = UserViolationRecord::with(['user', 'sanction', 'issuer'])->findOrFail($id);
+        if (!Auth::check()) {
+            return response()->json(['message' => 'Unauthorized'], 401);
+        }
 
-        $violation->status = $request->status;
-        $violation->save();
+        return DB::transaction(function () use ($request, $id) {
 
-        $violation->violation_codes = Violation::whereIn('id', $violation->violation_ids)
-            ->pluck('violation_code');
+            /* =============================
+               FIND RECORD
+            ============================== */
+            $violation = UserViolationRecord::with(['user', 'sanction', 'issuer'])
+                ->findOrFail($id);
 
-        return response()->json([
-            'record' => $violation,
-            'message' => 'Status updated successfully',
-        ]);
+            /* =============================
+               UPDATE STATUS
+            ============================== */
+            $violation->status = $request->status;
+            $violation->save();
+
+            /* =============================
+               GET VIOLATION CODES
+            ============================== */
+            $violations = Violation::whereIn('id', $violation->violation_ids)
+                ->pluck('violation_code');
+
+            /* =============================
+               PREPARE NOTIFICATION MESSAGE
+            ============================== */
+            $statusLabel = ucfirst($request->status);
+
+            $notificationId = DB::table('notifications')->insertGetId([
+                'notifiable_type' => 'violation_status_update',
+                'data' => json_encode([
+                    'title' => 'Violation Status Updated',
+                    'message' => "Ticket #{$violation->reference_no} is now {$statusLabel}",
+                    'link' => "/student/violations"
+                ]),
+                'created_at' => now(),
+            ]);
+
+            /* =============================
+               LINK NOTIFICATION TO USER
+            ============================== */
+            DB::table('notification_users')->insert([
+                'notification_id' => $notificationId,
+                'user_id' => $violation->user_id,
+                'is_read' => false,
+                'read_at' => null,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            /* =============================
+               ATTACH EXTRA DATA FOR RESPONSE
+            ============================== */
+            $violation->violation_codes = $violations;
+
+            return response()->json([
+                'record' => $violation,
+                'message' => 'Status updated and user notified successfully',
+            ]);
+        });
     }
 
-    public function printUnsettled()
+    public function printUnsettled(SisApiService $sisApi)
     {
         $user = auth()->user();
+
+        $student = $this->fetchStudentData($user->user_id_no, $sisApi);
 
         $violations = UserViolationRecord::with(['sanction', 'issuer'])
             ->where('user_id', $user->id)
@@ -315,9 +376,24 @@ class UserViolationRecordController extends Controller
             return $record;
         });
 
+        // generate SVG
+        $renderer = new ImageRenderer(
+            new RendererStyle(120),
+            new SvgImageBackEnd()
+        );
+
+        $writer = new Writer($renderer);
+
+        $qrSvg = $writer->writeString($user->user_id_no);
+
+        // convert SVG → base64 image (for PDF compatibility)
+        $qr = 'data:image/svg+xml;base64,' . base64_encode($qrSvg);
+
         $pdf = Pdf::loadView('pdf.student-unsettled-violations', [
             'violations' => $violations,
             'user' => $user,
+            'student' => $student,
+            'qr' => $qr,
         ])->setPaper('a4', 'portrait');
 
         $name = Str::slug($user->user_id_no);
@@ -325,6 +401,43 @@ class UserViolationRecordController extends Controller
         $filename = "CSDL_Violation_Report_{$name}_{$date}.pdf";
 
         return $pdf->stream($filename);
+    }
+
+    private function fetchStudentData($userIdNo, SisApiService $sisApi)
+    {
+        $query = http_build_query([
+            'user_id_no' => [$userIdNo]
+        ]);
+
+        $response = $sisApi->get("/api/student-enrollment?{$query}");
+
+        if (!$response->ok()) {
+            return null;
+        }
+
+        $student = collect($response->json())->first();
+
+        if (!$student) {
+            return null;
+        }
+
+        $enrollments = collect($student['enrolled_students'] ?? []);
+
+        $currentEnrollment = $enrollments->first(function ($enrollment) {
+            return data_get($enrollment, 'year_section.school_year.is_current') == 1;
+        });
+
+        return [
+            'first_name' => $student['first_name'] ?? null,
+            'last_name' => $student['last_name'] ?? null,
+            'middle_name' => $student['middle_name'] ?? null,
+            'birthday' => $student['birthday'] ?? null,
+            'email_address' => $student['email_address'] ?? null,
+            'gender' => $student['gender'] ?? null,
+            'present_address' => $student['present_address'] ?? null,
+
+            'current_enrollment' => $currentEnrollment,
+        ];
     }
 
     public function exportCSV(Request $request)

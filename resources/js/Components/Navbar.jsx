@@ -1,28 +1,90 @@
-import {
-    Bars3Icon,
-    IdentificationIcon,
-    UserCircleIcon,
-    MagnifyingGlassIcon,
-    BellIcon,
-    ExclamationTriangleIcon,
-    MegaphoneIcon
-} from '@heroicons/react/24/outline';
+import React, { useState, useEffect } from 'react';
 import { router, usePage } from '@inertiajs/react';
-import { InboxIcon } from 'lucide-react';
-import { useState, useRef, useEffect } from 'react';
+import { Button, Dropdown, Badge, Avatar, Typography, Space, List, Spin, Breadcrumb, Card, Switch, Input, theme } from "antd";
+import {
+    MenuUnfoldOutlined,
+    MenuFoldOutlined,
+    SearchOutlined,
+    BellOutlined,
+    UserOutlined,
+    LogoutOutlined,
+    IdcardOutlined,
+    BulbOutlined,
+    BulbFilled,
+    InboxOutlined,
+    SunOutlined,
+    MoonFilled,
+    IdcardFilled,
+    MoonOutlined,
+    ExclamationCircleFilled
+} from "@ant-design/icons";
 import axios from 'axios';
 
-export default function Navbar({ user, onMobileMenu, breadcrumbs = [] }) {
-    const [openProfile, setOpenProfile] = useState(false);
-    const [openNotifications, setOpenNotifications] = useState(false);
+const { Text } = Typography;
+const { useToken } = theme;
+
+
+export default function Navbar({ user, onMobileMenu, breadcrumbs = [], isDark, toggleTheme, collapsed }) {
     const [userNotifications, setUserNotifications] = useState([]);
     const [loading, setLoading] = useState(false);
+    const [pageLoading, setPageLoading] = useState(false);
 
-    const profileRef = useRef(null);
-    const notificationRef = useRef(null);
+    const [imageError, setImageError] = useState(false);
+
+    useEffect(() => {
+        if (!user?.profile_photo) {
+            setImageError(true);
+            return;
+        }
+
+        const img = new Image();
+
+        const src = user.profile_photo.startsWith("profile-photos/")
+            ? `/storage/${user.profile_photo}`
+            : `https://lh3.googleusercontent.com/d/${user.profile_photo}`;
+
+        img.src = src;
+
+        img.onload = () => setImageError(false);
+        img.onerror = () => setImageError(true);
+
+    }, [user?.profile_photo]);
+
+    const { token } = useToken();
+
+    const isSecurity = user?.user_role === "security";
+
+    useEffect(() => {
+        const start = router.on('start', () => setPageLoading(true));
+        const finish = router.on('finish', () => setPageLoading(false));
+        const cancel = router.on('cancel', () => setPageLoading(false));
+
+        return () => {
+            start();
+            finish();
+            cancel();
+        };
+    }, []);
+
+    const { url } = usePage();
+    const isDigitalIDActive = url.startsWith('/student/digital-id');
+
+    useEffect(() => {
+        if (user?.user_role === 'student') fetchNotifications();
+    }, []);
+
+    const formatTimeAgo = (dateString) => {
+        const date = new Date(dateString);
+        const now = new Date();
+        const diffInSeconds = Math.floor((now - date) / 1000);
+
+        if (diffInSeconds < 60) return 'Just now';
+        if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
+        if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
+        return date.toLocaleDateString();
+    };
 
     const fetchNotifications = async () => {
-        if (!user) return;
         setLoading(true);
         try {
             const response = await axios.get('/user-notifications');
@@ -37,275 +99,278 @@ export default function Navbar({ user, onMobileMenu, breadcrumbs = [] }) {
     const markAllRead = async () => {
         try {
             await axios.post('/notifications/mark-all-read');
-            // Optimistically update local state to clear unread UI
             setUserNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
         } catch (error) {
-            console.error("Failed to mark notifications as read", error);
+            console.error("Failed to mark all as read", error);
         }
     };
 
     const handleNotificationClick = async (notif) => {
-        // 1. Mark as read in the database
         if (!notif.is_read) {
             try {
                 await axios.post(`/notifications/${notif.id}/mark-as-read`);
-
-                // 2. Update local state so the UI updates instantly
                 setUserNotifications(prev =>
                     prev.map(n => n.id === notif.id ? { ...n, is_read: true } : n)
                 );
             } catch (error) {
-                console.error("Failed to mark notification as read", error);
+                console.error("Failed to mark read", error);
             }
         }
-
-        // 3. Navigate to the link if it exists
         if (notif.data?.link) {
             router.visit(notif.data.link);
-            setOpenNotifications(false); // Close dropdown
         }
     };
 
-    useEffect(() => {
-        fetchNotifications();
-    }, []);
+    const [open, setOpen] = useState(false);
+    const [value, setValue] = useState("");
 
-    const { url } = usePage();
-    const isProfileActive = url.startsWith('/profile');
-    const isDigitalIDActive = url.startsWith('/student/digital-id');
 
-    useEffect(() => {
-        function handleClickOutside(event) {
-            if (profileRef.current && !profileRef.current.contains(event.target)) {
-                setOpenProfile(false);
-            }
-            if (notificationRef.current && !notificationRef.current.contains(event.target)) {
-                setOpenNotifications(false);
-            }
-        }
-        document.addEventListener("mousedown", handleClickOutside);
-        return () => document.removeEventListener("mousedown", handleClickOutside);
-    }, []);
+    const handleSearch = () => {
+        if (!value.trim()) return;
 
-    const formatTimeAgo = (dateString) => {
-        const date = new Date(dateString);
-        const now = new Date();
-        const diffInSeconds = Math.floor((now - date) / 1000);
-
-        if (diffInSeconds < 60) return 'Just now';
-        if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
-        if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
-        return date.toLocaleDateString();
+        router.get(`/manage-user/${user.id}/show`, {
+            user_id_no: value,
+        });
     };
 
-    const getNotificationStyles = (type) => {
-        switch (type) {
-            case 'violation':
-                return {
-                    icon: <ExclamationTriangleIcon className="h-4 w-4" />,
-                    bg: 'bg-red-100 text-red-600',
-                    dot: 'bg-red-600'
-                };
-            case 'announcement':
-                return {
-                    icon: <MegaphoneIcon className="h-4 w-4" />,
-                    bg: 'bg-blue-100 text-blue-600',
-                    dot: 'bg-blue-600'
-                };
-            default:
-                return {
-                    icon: <BellIcon className="h-4 w-4" />,
-                    bg: 'bg-indigo-100 text-indigo-600',
-                    dot: 'bg-indigo-600'
-                };
-        }
-    };
-
-    const userAvatar = user?.profile_photo ? (
-        <img
-            src={
-
-                user.profile_photo.startsWith("profile-photos/")
-                    ? `/storage/${user.profile_photo}`
-                    : `https://lh3.googleusercontent.com/d/${user.profile_photo}`
+    const notificationContent = (
+        <Card
+            // Replace your Card className with this:
+            className="w-full sm:w-80 md:w-96 shadow-2xl border-none overflow-hidden"
+            styles={{
+                header: { borderBottom: '1px solid rgba(0,0,0,0.06)', padding: '12px 16px' },
+                body: { padding: 0 }
+            }}
+            title={
+                <Space>
+                    <Text strong>Notifications</Text>
+                    <Badge
+                        count={userNotifications.filter(n => !n.is_read).length}
+                        style={{ backgroundColor: '#108ee9' }}
+                    />
+                </Space>
             }
-            alt="User Avatar"
-            className="h-9 w-9 ring-2 ring-gray-100 rounded-full object-cover"
-        />
-    ) : (
-        <UserCircleIcon className="h-9 w-9 text-gray-700" />
+            extra={
+                userNotifications.some(n => !n.is_read) && (
+                    <Button
+                        type="link"
+                        size="small"
+                        onClick={markAllRead}
+                        className="text-xs font-medium"
+                    >
+                        Mark all read
+                    </Button>
+                )
+            }
+        >
+            <div className="max-h-[450px] overflow-auto scrollbar-hide">
+                <List
+                    loading={loading}
+                    dataSource={userNotifications}
+                    locale={{
+                        emptyText: (
+                            <div className="py-12 text-center flex flex-col items-center">
+                                <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-full mb-3">
+                                    <InboxOutlined className="text-3xl opacity-20" />
+                                </div>
+                                <Text type="secondary">All caught up!</Text>
+                            </div>
+                        )
+                    }}
+                    renderItem={(item) => {
+                        const isUnread = !item.is_read;
+                        return (
+                            <List.Item
+                                onClick={() => handleNotificationClick(item)}
+                                className={`
+                                cursor-pointer transition-all duration-200 border-l-4 m-2
+                                ${isUnread
+                                        ? 'bg-blue-50/50 dark:bg-blue-900/10 border-l-blue-500'
+                                        : 'hover:bg-gray-50 dark:hover:bg-gray-800/50 border-l-transparent'}
+                            `}
+                            >
+                                <List.Item.Meta
+                                    avatar={
+                                        <Badge dot={isUnread} offset={[-2, 32]} color="blue">
+                                            <Avatar
+                                                shape="circle"
+                                                className={`ml-2 ${isUnread ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-400'}`}
+                                                icon={<BellOutlined />}
+                                            />
+                                        </Badge>
+                                    }
+                                    title={
+                                        <div className="flex justify-between items-start gap-2">
+                                            <Text strong={isUnread} className="text-sm leading-tight">
+                                                {item.data?.title}
+                                            </Text>
+                                            <Text type="secondary" className="text-[10px] whitespace-nowrap mt-0.5 mr-2">
+                                                {formatTimeAgo(item.created_at)}
+                                            </Text>
+                                        </div>
+                                    }
+                                    description={
+                                        <div className="mt-1">
+                                            <Text type="secondary" className="text-xs line-clamp-2 leading-normal">
+                                                {item.data?.message}
+                                            </Text>
+                                        </div>
+                                    }
+                                />
+                            </List.Item>
+                        );
+                    }}
+                />
+            </div>
+        </Card>
     );
 
+    const profileMenu = {
+        items: [
+            { key: '1', label: 'Profile', icon: <UserOutlined />, onClick: () => router.visit('/profile') },
+            { key: '2', type: 'divider' },
+            { key: '3', label: 'Logout', icon: <LogoutOutlined />, danger: true, onClick: () => router.post('/logout') },
+        ]
+    };
+
     return (
-        <nav className="bg-white border-b sticky top-0 z-40 w-full">
-            <div className="px-4 lg:px-6 py-2.5 flex items-center justify-between">
-                {/* LEFT SECTION */}
-                <div className="flex items-center space-x-3">
-                    <button className="lg:hidden p-2 hover:bg-gray-100 rounded-full transition" onClick={onMobileMenu}>
-                        <Bars3Icon className="h-6 w-6 text-gray-700" />
-                    </button>
-                    <div className="lg:hidden font-extrabold text-indigo-600 text-xl tracking-tighter">myOCC</div>
-                    <div className="hidden lg:block text-sm uppercase tracking-wider font-medium text-gray-600">
-                        {breadcrumbs.length > 0 ? (
-                            breadcrumbs.map((item, index) => (
-                                <span key={index}>
-                                    {item}
-                                    {index < breadcrumbs.length - 1 && <span className="mx-2 text-gray-300">/</span>}
-                                </span>
-                            ))
-                        ) : "Dashboard"}
+        <div className="sticky top-0 z-40 flex items-center justify-between px-4 h-16 bg-white dark:bg-[#001529] border-b dark:border-gray-800 transition-all">
+            <div className="flex items-center gap-4">
+                {isSecurity ? (
+                    <div className="flex items-center gap-2">
+                        <img
+                            onClick={() => router.visit('/security/dashboard')}
+                            src={
+                                isDark
+                                    ? "/../assets/images/darkMode-csdl-logo.png"
+                                    : "/../assets/images/defaultMode-csdl-logo.png"
+                            }
+                            alt="logo"
+                            style={{ height: 40 }}
+                        />
+
+
                     </div>
-                </div>
+                ) : (
+                    <>
+                        <Button
+                            type="text"
+                            icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+                            onClick={onMobileMenu}
+                        />
 
-                {/* RIGHT SECTION */}
-                <div className="flex items-center space-x-1 md:space-x-3">
-                    <button className="hidden md:flex p-2 hover:bg-gray-100 rounded-full transition text-gray-600">
-                        <MagnifyingGlassIcon className="h-6 w-6" />
-                    </button>
-
-                    {/* NOTIFICATIONS DROPDOWN */}
-                    {user?.user_role === 'student' && (
-                        <div className="relative" ref={notificationRef}>
-                            <button
-                                onClick={() => {
-                                    const newState = !openNotifications;
-                                    setOpenNotifications(newState);
-                                    setOpenProfile(false);
-                                    if (newState) fetchNotifications();
-                                }}
-                                className={`p-1 rounded-full transition relative hover:bg-gray-100 ${openNotifications ? 'bg-gray-100 text-indigo-600' : 'text-gray-600'}`}
-                            >
-                                <BellIcon className="h-6 w-6" />
-                                {userNotifications.filter(n => !n.is_read).length > 0 && (
-                                    <span className="absolute top-1 right-1 flex h-3 w-3 items-center justify-center rounded-full bg-red-500 text-white text-[8px] font-bold ring-2 ring-white">
-                                        {userNotifications.filter(n => !n.is_read).length}
-                                    </span>
-                                )}
-                            </button>
-
-                            {openNotifications && (
-                                <div className="absolute right-[-103px] sm:right-0 md:right-[-90px] w-[320px] md:w-96 bg-white shadow-2xl rounded-2xl border border-gray-100 z-50 overflow-hidden animate-in fade-in zoom-in duration-200">
-                                    <div className="px-4 py-3 border-b border-gray-50 flex justify-between items-center bg-white">
-                                        <h3 className="font-bold text-gray-900 text-sm">Notifications</h3>
-                                        {userNotifications.some(n => !n.is_read) && (
-                                            <button
-                                                onClick={markAllRead}
-                                                className="text-[11px] text-indigo-600 font-bold hover:text-indigo-800 transition uppercase tracking-tight"
-                                            >
-                                                Mark all as read
-                                            </button>
-                                        )}
-                                    </div>
-
-                                    <div className="max-h-[60vh] md:max-h-[400px] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-200">
-                                        {loading ? (
-                                            <div className="flex flex-col items-center justify-center py-10">
-                                                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-indigo-600"></div>
-                                                <span className="text-xs text-gray-400 mt-2">Checking for updates...</span>
-                                            </div>
-                                        ) : userNotifications.length > 0 ? (
-                                            userNotifications.map((notif) => {
-                                                const theme = getNotificationStyles(notif.notifiable_type);
-                                                return (
-                                                    <div
-                                                        key={notif.id}
-                                                        onClick={() => handleNotificationClick(notif)}
-                                                        className={`group px-4 py-4 border-b border-gray-50 transition-all cursor-pointer relative flex items-start space-x-3
-                        ${!notif.is_read ? 'bg-indigo-50/40 hover:bg-indigo-50' : 'hover:bg-gray-50'}`}
-                                                    >
-                                                        {/* Unread dot indicator */}
-                                                        {!notif.is_read && (
-                                                            <div className={`absolute right-4 top-1/2 -translate-y-1/2 h-2.5 w-2.5 rounded-full shadow-sm ${theme.dot}`}></div>
-                                                        )}
-
-                                                        {/* Icon Container */}
-                                                        <div className={`mt-1 p-2 rounded-lg shrink-0 transition-colors ${!notif.is_read ? theme.bg : 'bg-gray-100 text-gray-400'}`}>
-                                                            {theme.icon}
-                                                        </div>
-
-                                                        {/* Text Content */}
-                                                        <div className="flex-1 min-w-0 pr-4">
-                                                            <p className={`text-sm leading-snug truncate ${!notif.is_read ? 'font-bold text-gray-900' : 'font-medium text-gray-700'}`}>
-                                                                {notif.data?.title}
-                                                            </p>
-                                                            <p className="text-xs text-gray-500 mt-1 line-clamp-2 leading-relaxed">
-                                                                {notif.data?.message}
-                                                            </p>
-                                                            <p className="text-[10px] font-medium text-gray-400 mt-2 flex items-center italic">
-                                                                <span className="mr-1 opacity-70">●</span>
-                                                                {formatTimeAgo(notif.created_at)}
-                                                            </p>
-                                                        </div>
-                                                    </div>
-                                                );
-                                            })
-                                        ) : (
-                                            <div className="flex flex-col items-center justify-center py-12 px-6 text-center">
-                                                <div className="bg-gray-50 p-4 rounded-full">
-                                                    <InboxIcon className="h-8 w-8 text-gray-300" />
-                                                </div>
-                                                <h4 className="text-sm font-bold text-gray-800 mt-4">All caught up!</h4>
-                                                <p className="text-xs text-gray-400 mt-1">You have no new notifications.</p>
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    {userNotifications.length > 0 && (
-                                        <div className="bg-gray-50/50 px-4 py-2 border-t border-gray-50 text-center">
-                                            <button className="text-[11px] text-gray-500 font-medium hover:text-gray-700">View History</button>
-                                        </div>
-                                    )}
-                                </div>
+                        <Breadcrumb className="hidden md:block">
+                            {breadcrumbs.length > 0 ? (
+                                breadcrumbs.map((b, i) => (
+                                    <Breadcrumb.Item key={i}>{b}</Breadcrumb.Item>
+                                ))
+                            ) : (
+                                <Breadcrumb.Item>Dashboard</Breadcrumb.Item>
                             )}
-                        </div>
-                    )}
-
-                    {/* QUICK ACCESS DIGITAL ID */}
-                    {user?.user_role === 'student' && (
-                        <button
-                            onClick={() => router.visit('/student/digital-id')}
-                            className={`p-2 rounded-full transition hover:bg-gray-100 ${isDigitalIDActive ? 'bg-indigo-100 text-indigo-600' : 'text-gray-600'}`}
-                        >
-                            <IdentificationIcon className="h-6 w-6" />
-                        </button>
-                    )}
-
-                    {/* PROFILE DROPDOWN */}
-                    <div className="relative pl-1 md:pl-2" ref={profileRef}>
-                        <button
-                            className="flex items-center transition-transform active:scale-95 ring-offset-2 focus:ring-2 focus:ring-indigo-500 rounded-full"
-                            onClick={() => {
-                                setOpenProfile(!openProfile);
-                                setOpenNotifications(false);
-                            }}
-                        >
-                            {userAvatar}
-                        </button>
-
-                        {openProfile && (
-                            <div className="absolute right-0 mt-2 w-56 bg-white shadow-2xl rounded-2xl border border-gray-100 z-50 py-2 overflow-hidden animate-in fade-in slide-in-from-top-1">
-                                <div className="px-4 py-3 border-b border-gray-50 mb-1 bg-gray-50/50">
-                                    <p className="text-xs text-gray-500 font-bold uppercase tracking-wider">Account</p>
-                                </div>
-                                <button
-                                    onClick={() => { router.visit('/profile'); setOpenProfile(false); }}
-                                    className={`w-full text-left px-4 py-2.5 text-sm hover:bg-gray-50 transition flex items-center space-x-2 ${isProfileActive ? 'text-indigo-600 font-semibold bg-indigo-50' : 'text-gray-700'}`}
-                                >
-                                    <span>Profile</span>
-                                </button>
-                                <div className="border-t border-gray-50 mt-1">
-                                    <button
-                                        onClick={() => router.post('/logout')}
-                                        className="w-full text-left px-4 py-2.5 text-sm hover:bg-red-50 text-red-600 font-medium transition"
-                                    >
-                                        Logout
-                                    </button>
-                                </div>
-                            </div>
-                        )}
-                    </div>
-                </div>
+                        </Breadcrumb>
+                    </>
+                )}
             </div>
-        </nav>
+
+            <Space size="middle">
+                {user?.user_role === 'admin' && (
+                    <div
+                        onMouseEnter={() => setOpen(true)}
+                        onMouseLeave={() => !value && setOpen(false)}
+                        style={{ display: "flex", alignItems: "center" }}
+                    >
+                        <Input
+                            placeholder="Search ID..."
+                            value={value}
+                            onChange={(e) => setValue(e.target.value)}
+                            onPressEnter={handleSearch}
+                            onBlur={() => !value && setOpen(false)}
+                            style={{
+                                width: open ? 200 : 0,
+                                opacity: open ? 1 : 0,
+                                marginRight: open ? 8 : 0,
+                                transition: "all 0.3s ease",
+                                overflow: "hidden",
+                            }}
+                        />
+
+                        <Button
+                            type="text"
+                            icon={<SearchOutlined />}
+                            onClick={handleSearch}
+                        />
+                    </div>
+                )}
+
+                {/* Theme Toggle */}
+                <Switch
+                    checked={isDark}
+                    onChange={toggleTheme}
+                    checkedChildren={<MoonOutlined />}
+                    unCheckedChildren={<SunOutlined />}
+                />
+
+                {/* <Button type="text" onClick={toggleTheme} icon={isDark ? <MoonFilled className="text-yellow-400" /> : <SunOutlined />} /> */}
+
+                {user?.user_role === 'student' && (
+                    <>
+                        <Dropdown dropdownRender={() => notificationContent} trigger={['click']} placement="bottomRight"
+                            onOpenChange={(open) => open && fetchNotifications()}
+                            overlayClassName="max-sm:!fixed max-sm:!left-2 max-sm:!right-2 max-sm:!top-16"
+                        >
+                            <Badge
+                                count={userNotifications.filter(n => !n.is_read).length}
+                                size="small"
+                                offset={[-5, 5]} // Adjust these numbers until it looks perfect
+                            >
+                                <Button type="text" icon={<BellOutlined className="text-lg" />} />
+                            </Badge>
+                        </Dropdown>
+                        <Button
+                            type="text"
+                            // Swap the icon component based on the active state
+                            icon={
+                                isDigitalIDActive ? (
+                                    <IdcardFilled
+                                        className="text-yellow-500"
+                                    />
+                                ) : (
+                                    <IdcardOutlined
+                                    />
+                                )
+                            }
+                            onClick={() => router.visit('/student/digital-id')}
+                            className={`flex items-center transition-all duration-300 ease-in-out`}
+                        >
+                        </Button>
+                    </>
+                )}
+
+                <Dropdown menu={profileMenu} trigger={['hover']} placement="bottomRight">
+                    <Space className="cursor-pointer ml-2">
+                        <Spin spinning={pageLoading} indicator={null}>
+                            <Badge
+                                count={imageError ? <ExclamationCircleFilled style={{ color: "#ff4d4f" }} /> : 0}
+                                offset={[-2, 30]}
+                            >
+                                <Avatar
+                                    className="border-2 border-gray-300 dark:border-gray-600"
+                                    src={
+                                        user?.profile_photo?.startsWith("profile-photos/")
+                                            ? `/storage/${user.profile_photo}`
+                                            : user?.profile_photo
+                                                ? `https://lh3.googleusercontent.com/d/${user.profile_photo}`
+                                                : undefined
+                                    }
+                                    icon={<UserOutlined />}
+                                    size={35}
+                                />
+                            </Badge>
+                        </Spin>
+                        <Text className="hidden sm:inline dark:text-gray-300">{user?.user_id_no}</Text>
+                    </Space>
+                </Dropdown>
+            </Space>
+        </div>
     );
 }

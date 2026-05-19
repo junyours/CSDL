@@ -1,8 +1,22 @@
 import { useState } from "react";
 import axios from "axios";
 import toast from "react-hot-toast";
+import {
+    Form,
+    Input,
+    Button,
+    Row,
+    Col,
+    Select,
+    Divider,
+    Alert,
+} from "antd";
+
+const { Option } = Select;
 
 export default function Create({ auth, onSuccess }) {
+    const [form] = Form.useForm();
+
     const [data, setData] = useState({
         user_id_no: "",
         first_name: "",
@@ -15,12 +29,26 @@ export default function Create({ auth, onSuccess }) {
     const [errors, setErrors] = useState({});
     const [processing, setProcessing] = useState(false);
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
+    const handleChange = (field, value) => {
+        setData((prev) => ({
+            ...prev,
+            [field]: value,
+        }));
+    };
+
+    const handleSubmit = async () => {
         setProcessing(true);
         setErrors({});
 
-        const promise = axios.post("/manage-user/store", data);
+        const payload = {
+            ...data,
+            first_name: data.first_name.toUpperCase(),
+            last_name: data.last_name.toUpperCase(),
+            middle_name: data.middle_name?.toUpperCase(),
+            user_id_no: data.user_id_no.toUpperCase(),
+        };
+
+        const promise = axios.post("/manage-user/store", payload);
 
         toast.promise(promise, {
             loading: "Creating user...",
@@ -30,7 +58,10 @@ export default function Create({ auth, onSuccess }) {
 
         try {
             await promise;
+
             onSuccess?.();
+
+            form.resetFields();
             setData({
                 user_id_no: "",
                 first_name: "",
@@ -39,9 +70,10 @@ export default function Create({ auth, onSuccess }) {
                 email_address: "",
                 user_role: "",
             });
+
         } catch (error) {
             if (error.response?.status === 422) {
-                setErrors(error.response.data.errors);
+                setErrors(error.response.data.errors || {});
             } else {
                 console.error(error);
             }
@@ -51,139 +83,129 @@ export default function Create({ auth, onSuccess }) {
     };
 
     return (
-        <form onSubmit={handleSubmit} className="space-y-6">
-
+        <Form
+            layout="vertical"
+            form={form}
+            onFinish={handleSubmit}
+        >
             {/* First & Middle Name */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                        First Name
-                    </label>
-                    <input
-                        type="text"
-                        value={data.first_name}
-                        onChange={(e) => setData({ ...data, first_name: e.target.value })}
-                        className={`w-full uppercase placeholder:normal-case px-3.5 py-2.5 text-sm border ${errors.first_name ? "border-red-300" : "border-gray-300"
-                            } rounded-lg`}
-                        placeholder="Enter first name"
-                    />
-                    {errors.first_name && (
-                        <p className="mt-1.5 text-sm text-red-600">
-                            {errors.first_name[0]}
-                        </p>
-                    )}
-                </div>
+            <Row gutter={16}>
+                <Col xs={24} md={12}>
+                    <Form.Item
+                        label="First Name"
+                        validateStatus={errors.first_name ? "error" : ""}
+                        help={errors.first_name?.[0]}
+                    >
+                        <Input
+                            value={data.first_name}
+                            onChange={(e) =>
+                                handleChange("first_name", e.target.value)
+                            }
+                        />
+                    </Form.Item>
+                </Col>
 
-                <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                        Middle Name
-                    </label>
-                    <input
-                        type="text"
-                        value={data.middle_name}
-                        onChange={(e) => setData({ ...data, middle_name: e.target.value })}
-                        className="w-full uppercase placeholder:normal-case px-3.5 py-2.5 text-sm border border-gray-300 rounded-lg"
-                        placeholder="Enter middle name"
-                    />
-                </div>
-            </div>
+                <Col xs={24} md={12}>
+                    <Form.Item label="Middle Name">
+                        <Input
+                            value={data.middle_name}
+                            onChange={(e) =>
+                                handleChange("middle_name", e.target.value)
+                            }
+                        />
+                    </Form.Item>
+                </Col>
+                <Col xs={24} md={12}>
 
-            {/* Last Name */}
-            <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                    Last Name
-                </label>
-                <input
-                    type="text"
-                    value={data.last_name}
-                    onChange={(e) => setData({ ...data, last_name: e.target.value })}
-                    className={`w-full uppercase placeholder:normal-case px-3.5 py-2.5 text-sm border ${errors.last_name ? "border-red-300" : "border-gray-300"
-                        } rounded-lg`}
-                    placeholder="Enter last name"
-                />
-                {errors.last_name && (
-                    <p className="mt-1.5 text-sm text-red-600">
-                        {errors.last_name[0]}
-                    </p>
-                )}
-            </div>
+                    {/* Last Name */}
+                    <Form.Item
+                        label="Last Name"
+                        validateStatus={errors.last_name ? "error" : ""}
+                        help={errors.last_name?.[0]}
+                    >
+                        <Input
+                            value={data.last_name}
+                            onChange={(e) =>
+                                handleChange("last_name", e.target.value)
+                            }
+                        />
+                    </Form.Item>
+                </Col>
+            </Row>
+
+            <Divider />
 
             {/* Email */}
-            <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                    Email Address
-                </label>
-                <input
+            <Form.Item
+                validateStatus={errors.email_address ? "error" : ""}
+                help={errors.email_address?.[0]}
+                label="Email Address"
+            >
+                <Input
                     type="email"
                     value={data.email_address}
-                    onChange={(e) => setData({ ...data, email_address: e.target.value })}
-                    className={`w-full px-3.5 py-2.5 text-sm border ${errors.email_address ? "border-red-300" : "border-gray-300"
-                        } rounded-lg`}
-                    placeholder="Enter email address"
+                    onChange={(e) =>
+                        handleChange("email_address", e.target.value)
+                    }
                 />
-                {errors.email_address && (
-                    <p className="mt-1.5 text-sm text-red-600">
-                        {errors.email_address[0]}
-                    </p>
-                )}
-            </div>
+            </Form.Item>
 
-            {/* User ID & User Role */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-
-                {/* User ID */}
-                <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                        User ID No
-                    </label>
-                    <input
-                        type="text"
-                        value={data.user_id_no}
-                        onChange={(e) => setData({ ...data, user_id_no: e.target.value })}
-                        className={`w-full uppercase placeholder:normal-case px-3.5 py-2.5 text-sm border ${errors.user_id_no ? "border-red-300" : "border-gray-300"
-                            } rounded-lg`}
-                        placeholder="Enter user ID number"
-                    />
-                    {errors.user_id_no && (
-                        <p className="mt-1.5 text-sm text-red-600">
-                            {errors.user_id_no[0]}
-                        </p>
-                    )}
-                </div>
-
-                {/* User Role */}
-                <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                        User Role
-                    </label>
-                    <select
-                        value={data.user_role}
-                        onChange={(e) => setData({ ...data, user_role: e.target.value })}
-                        className={`w-full px-3.5 py-2.5 text-sm border ${errors.user_role ? "border-red-300" : "border-gray-300"
-                            } rounded-lg`}
+            {/* User ID & Role */}
+            <Row gutter={16}>
+                <Col xs={24} md={12}>
+                    <Form.Item
+                        label="User ID No"
+                        validateStatus={errors.user_id_no ? "error" : ""}
+                        help={errors.user_id_no?.[0]}
                     >
-                        <option value="" disabled>Select role</option>
-                        <option value="security">Security Personnel</option>
-                        <option value="admin">Administrator</option>
-                        <option value="student">Student</option>
-                    </select>
-                    {errors.user_role && (
-                        <p className="mt-1.5 text-sm text-red-600">
-                            {errors.user_role[0]}
-                        </p>
-                    )}
-                </div>
+                        <Input
+                            value={data.user_id_no}
+                            onChange={(e) =>
+                                handleChange("user_id_no", e.target.value)
+                            }
+                        />
+                    </Form.Item>
+                </Col>
 
-            </div>
+                <Col xs={24} md={12}>
+                    <Form.Item
+                        label="User Role"
+                        validateStatus={errors.user_role ? "error" : ""}
+                        help={errors.user_role?.[0]}
+                    >
+                        <Select
+                            placeholder="Select role"
+                            value={data.user_role || undefined}
+                            onChange={(value) =>
+                                handleChange("user_role", value)
+                            }
+                        >
+                            <Option value="security">Security Personnel</Option>
+                            <Option value="guidance_counselor">Guidance Counselor</Option>
 
+                        </Select>
+                    </Form.Item>
+                </Col>
+            </Row>
 
-            <button
-                type="submit"
-                disabled={processing}
-                className="w-full px-4 py-2.5 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50"
-            >
-                {processing ? "Saving..." : "Save User"}
-            </button>
-        </form>
+            {/* Submit */}
+            <Form.Item>
+                <Button
+                    type="primary"
+                    htmlType="submit"
+                    loading={processing}
+                    block
+                    style={{ marginTop: "15px" }}
+                >
+                    {processing ? "Saving..." : "Save"}
+                </Button>
+            </Form.Item>
+            <Alert
+                type="info"
+                showIcon
+                message="Default Password"
+                description="The default password is the User ID number. Make sure the user changes it after their first login."
+            />
+        </Form >
     );
 }

@@ -4,11 +4,11 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Event;
+use App\Models\EventAttendance;
 use App\Models\Location;
 use App\Models\Notification;
 use App\Models\Sanction;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
@@ -17,22 +17,23 @@ use App\Services\SisApiService;
 class EventController extends Controller
 {
 
-    // public function index(SisApiService $sisApi)
+    // public function index(Request $request, SisApiService $sisApi)
     // {
-    //     $events = Event::where('status', true)
+    //     $search = $request->input('search');
+
+    //     // 1. Fetch Paginated Events with Search Filter
+    //     $eventsQuery = Event::where('status', true)
+    //         ->where('creator_user_id', auth()->id())
+    //         ->when($search, function ($query, $search) {
+    //             $query->where('event_name', 'like', "%{$search}%");
+    //         })
     //         ->orderBy('event_date', 'desc')
-    //         ->get();
+    //         ->paginate(20)
+    //         ->withQueryString();
 
+    //     // 2. Fetch external structure data
     //     $response = $sisApi->get('/api/school-structure');
-
-    //     if (!$response->ok()) {
-    //         return response()->json([
-    //             'success' => false,
-    //             'message' => 'Failed to fetch school structure from API'
-    //         ], 500);
-    //     }
-
-    //     $schoolStructure = $response->json() ?? [];
+    //     $schoolStructure = $response->ok() ? ($response->json() ?? []) : [];
 
     //     // Safely extract arrays
     //     $schoolYears = $schoolStructure['school_years'] ?? [];
@@ -41,41 +42,18 @@ class EventController extends Controller
 
     //     // Create lookup maps
     //     $schoolYearMap = collect($schoolYears)->keyBy('id');
-
-    //     $coursesMap = collect($departments)
-    //         ->pluck('course')
-    //         ->flatten(1)
-    //         ->keyBy('id');
-
+    //     $coursesMap = collect($departments)->pluck('course')->flatten(1)->keyBy('id');
     //     $yearLevelsMap = collect($yearLevels)->keyBy('id');
-
-
-    //     // Fetch all locations and sanctions for mapping
     //     $locationsMap = Location::all()->keyBy('id');
     //     $sanctionsMap = Sanction::all()->keyBy('id');
 
-    //     // 3. Attach related data for each event
-    //     $events = $events->map(function ($event) use ($schoolYearMap, $coursesMap, $yearLevelsMap, $locationsMap, $sanctionsMap) {
-    //         // Semester with School Year
-    //         $schoolYear = $schoolYearMap[$event->school_year_id] ?? null;
-
-    //         // Participant Courses (already an array)
+    //     // 3. Transform the collection inside the paginator
+    //     $eventsQuery->getCollection()->transform(function ($event) use ($schoolYearMap, $coursesMap, $yearLevelsMap, $locationsMap, $sanctionsMap) {
     //         $participantCourseIds = $event->participant_course_id ?? [];
-    //         $participantCourses = collect($participantCourseIds)->map(function ($id) use ($coursesMap) {
-    //             return $coursesMap[$id] ?? null;
-    //         })->filter();
+    //         $participantCourses = collect($participantCourseIds)->map(fn($id) => $coursesMap[$id] ?? null)->filter();
 
-    //         // Participant Year Levels (already an array)
     //         $participantYearLevelIds = $event->participant_year_level_id ?? [];
-    //         $participantYearLevels = collect($participantYearLevelIds)->map(function ($id) use ($yearLevelsMap) {
-    //             return $yearLevelsMap[$id] ?? null;
-    //         })->filter();
-
-    //         // Location
-    //         $location = $locationsMap[$event->location_id] ?? null;
-
-    //         // Sanction
-    //         $sanction = $sanctionsMap[$event->sanction_id] ?? null;
+    //         $participantYearLevels = collect($participantYearLevelIds)->map(fn($id) => $yearLevelsMap[$id] ?? null)->filter();
 
     //         return [
     //             'id' => $event->id,
@@ -89,17 +67,20 @@ class EventController extends Controller
     //             'second_start_time' => $event->second_start_time,
     //             'second_end_time' => $event->second_end_time,
     //             'attendance_duration' => $event->attendance_duration,
-    //             'school_year' => $schoolYear,
+    //             'school_year' => $schoolYearMap[$event->school_year_id] ?? null,
     //             'participant_courses' => $participantCourses->values(),
     //             'participant_year_levels' => $participantYearLevels->values(),
-    //             'location' => $location,
-    //             'sanction' => $sanction,
+    //             'location' => $locationsMap[$event->location_id] ?? null,
+    //             'sanction' => $sanctionsMap[$event->sanction_id] ?? null,
     //             'is_cancelled' => $event->is_cancelled,
     //             'status' => $event->status,
     //         ];
     //     });
 
-    //     return inertia('Admin/Events/Index', ['events' => $events]);
+    //     return inertia('Admin/Events/Index', [
+    //         'events' => $eventsQuery,
+    //         'filters' => $request->only(['search'])
+    //     ]);
     // }
 
 
@@ -185,7 +166,7 @@ class EventController extends Controller
         Notification::create([
             'courses_id' => $validated['participant_course_id'],
             'year_levels_id' => $validated['participant_year_level_id'],
-            'notifiable_type' => "New event invitation",
+            'notifiable_type' => "event",
             'data' => $notifMessage,
             'created_at' => now()
         ]);
@@ -229,14 +210,16 @@ class EventController extends Controller
         return $response->json();
     }
 
-    public function edit(Event $event)
+    public function edit(Request $request, Event $event, SisApiService $sisApi)
     {
         $sanctions = Sanction::where('status', 1)->get();
         $locations = Location::where('status', 1)->get();
 
-        // Fetch school structure from API
-        $response = $this->fetchSchoolStructureAPI(request());
-        $schoolStructure = $response->getData()->data ?? null;
+        try {
+            $schoolStructure = $this->fetchSchoolStructure($request, $sisApi);
+        } catch (\Exception $e) {
+            $schoolStructure = null;
+        }
 
         return response()->json([
             'event' => $event,
@@ -378,6 +361,60 @@ class EventController extends Controller
             'message' => 'Event updated successfully',
             'data' => $event,
         ], 200);
+    }
+
+    public function show(Request $request, Event $event, SisApiService $sisApi)
+    {
+        // 1. Fetch external structure data (needed for mapping IDs to names)
+        $response = $sisApi->get('/api/school-structure');
+        $schoolStructure = $response->ok() ? ($response->json() ?? []) : [];
+
+        $schoolYears = $schoolStructure['school_years'] ?? [];
+        $departments = $schoolStructure['departments'] ?? [];
+        $yearLevels = $schoolStructure['year_levels'] ?? [];
+
+        // 2. Create lookup maps
+        $schoolYearMap = collect($schoolYears)->keyBy('id');
+        $coursesMap = collect($departments)->pluck('course')->flatten(1)->keyBy('id');
+        $yearLevelsMap = collect($yearLevels)->keyBy('id');
+
+        // 3. Map participant names/details
+        $participantCourses = collect($event->participant_course_id ?? [])
+            ->map(fn($id) => $coursesMap[$id] ?? null)
+            ->filter();
+
+        $participantYearLevels = collect($event->participant_year_level_id ?? [])
+            ->map(fn($id) => $yearLevelsMap[$id] ?? null)
+            ->filter();
+
+        // 4. Transform the single event object and include attendances
+        $eventData = [
+            'id' => $event->id,
+            'event_name' => $event->event_name,
+            'event_date' => $event->event_date,
+            'attendance_type' => $event->attendance_type,
+            'start_time' => $event->start_time,
+            'end_time' => $event->end_time,
+            'first_start_time' => $event->first_start_time,
+            'first_end_time' => $event->first_end_time,
+            'second_start_time' => $event->second_start_time,
+            'second_end_time' => $event->second_end_time,
+            'attendance_duration' => $event->attendance_duration,
+            'school_year' => $schoolYearMap[$event->school_year_id] ?? null,
+            'participant_courses' => $participantCourses->values(),
+            'participant_year_levels' => $participantYearLevels->values(),
+            'location' => Location::find($event->location_id),
+            'sanction' => Sanction::find($event->sanction_id),
+            'is_cancelled' => (bool) $event->is_cancelled,
+            'status' => (bool) $event->status,
+            'event_attendances' => EventAttendance::where('event_id', $event->id)
+                ->orderBy('attended_at', 'desc')
+                ->get(),
+        ];
+
+        return Inertia::render('Admin/Events/Show', [
+            'event' => $eventData
+        ]);
     }
 
 }

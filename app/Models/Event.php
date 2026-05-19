@@ -24,6 +24,7 @@ class Event extends Model
         'sanction_id',
         'is_cancelled',
         'status',
+        'creator_user_id'
     ];
 
     protected $casts = [

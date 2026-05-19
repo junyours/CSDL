@@ -1,54 +1,47 @@
 import { useState } from "react";
 import axios from "axios";
-import toast from "react-hot-toast";
+import {
+    Form,
+    Input,
+    Select,
+    InputNumber,
+    Button,
+    Switch,
+    message,
+} from "antd";
+
+const { TextArea } = Input;
 
 export default function Create({ onSuccess }) {
-    const [data, setData] = useState({
-        sanction_type: "",
-        sanction_name: "",
-        sanction_description: "",
-        monetary_amount: "",
-        service_time: "",
-        service_time_type: "",
-        status: true,
-    });
-
-    const [errors, setErrors] = useState({});
+    const [form] = Form.useForm();
     const [processing, setProcessing] = useState(false);
+    const [sanctionType, setSanctionType] = useState("");
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
+    const handleSubmit = async (values) => {
         setProcessing(true);
-        setErrors({});
-
-        const promise = axios.post("/setup/sanction/store", data);
-        
-        toast.promise(promise, {
-            loading: "Creating sanction...",
-            success: "Sanction created successfully!",
-            error: "Failed to create sanction",
-        });
 
         try {
-            await promise;
+            await axios.post("/setup/sanction/store", values);
 
-            onSuccess?.(); // auto-close modal + refresh table
+            message.success("Sanction created successfully!");
 
-            // Reset form
-            setData({
-                sanction_type: "",
-                sanction_name: "",
-                sanction_description: "",
-                monetary_amount: "",
-                service_time: "",
-                service_time_type: "",
-                status: true,
-            });
+            form.resetFields();
+            setSanctionType("");
+
+            onSuccess?.();
 
         } catch (error) {
             if (error.response?.status === 422) {
-                setErrors(error.response.data.errors);
+                const serverErrors = error.response.data.errors;
+
+                const formatted = Object.keys(serverErrors).map((key) => ({
+                    name: key,
+                    errors: [serverErrors[key][0]],
+                }));
+
+                form.setFields(formatted);
             } else {
+                message.error("Failed to create sanction");
                 console.error(error);
             }
         } finally {
@@ -57,168 +50,127 @@ export default function Create({ onSuccess }) {
     };
 
     return (
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <Form
+            form={form}
+            layout="vertical"
+            onFinish={handleSubmit}
+            initialValues={{
+                sanction_type: "",
+                sanction_name: "",
+                sanction_description: "",
+                monetary_amount: "",
+                service_time: "",
+                service_time_type: "",
+                status: true,
+            }}
+        >
 
             {/* TYPE */}
-            <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                    Sanction Type
-                </label>
-                <select
-                    value={data.sanction_type}
-                    onChange={(e) =>
-                        setData({ ...data, sanction_type: e.target.value })
-                    }
-                    className={`w-full px-3.5 py-2.5 text-sm border rounded-lg ${errors.sanction_type ? "border-red-300" : "border-gray-300"
-                        }`}
-                >
-                    <option value="">Select type</option>
-                    <option value="monetary">Monetary</option>
-                    <option value="service">Service</option>
-                </select>
-                {errors.sanction_type && (
-                    <p className="text-red-600 text-sm mt-1.5">
-                        {errors.sanction_type[0]}
-                    </p>
-                )}
-            </div>
+            <Form.Item
+                label="Type"
+                name="sanction_type"
+                rules={[
+                    { required: true, message: "Sanction type is required" },
+                ]}
+            >
+                <Select
+                    placeholder="Select type"
+                    onChange={(value) => setSanctionType(value)}
+                    options={[
+                        { value: "monetary", label: "Monetary" },
+                        { value: "service", label: "Service" },
+                    ]}
+                />
+            </Form.Item>
 
             {/* NAME */}
-            <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                    Sanction Name
-                </label>
-                <input
-                    type="text"
-                    value={data.sanction_name}
-                    onChange={(e) =>
-                        setData({ ...data, sanction_name: e.target.value })
-                    }
-                    placeholder="Enter sanction name"
-                    className={`w-full px-3.5 uppercase placeholder:normal-case py-2.5 text-sm border rounded-lg ${errors.sanction_name ? "border-red-300" : "border-gray-300"
-                        }`}
+            <Form.Item
+                label="Sanction Name"
+                name="sanction_name"
+                rules={[
+                    { required: true, message: "Sanction name is required" },
+                ]}
+            >
+                <Input
+                    style={{ textTransform: "uppercase" }}
                 />
-                {errors.sanction_name && (
-                    <p className="text-red-600 text-sm mt-1.5">
-                        {errors.sanction_name[0]}
-                    </p>
-                )}
-            </div>
+            </Form.Item>
 
             {/* DESCRIPTION */}
-            <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                    Description
-                </label>
-                <textarea
+            <Form.Item
+                label="Description"
+                name="sanction_description"
+            >
+                <TextArea
                     rows={4}
-                    value={data.sanction_description}
-                    onChange={(e) =>
-                        setData({ ...data, sanction_description: e.target.value })
-                    }
                     placeholder="Optional description"
-                    className={`w-full px-3.5 py-2.5 text-sm border rounded-lg ${errors.sanction_description
-                        ? "border-red-300"
-                        : "border-gray-300"
-                        }`}
                 />
-                {errors.sanction_description && (
-                    <p className="text-red-600 text-sm mt-1.5">
-                        {errors.sanction_description[0]}
-                    </p>
-                )}
-            </div>
+            </Form.Item>
 
             {/* MONETARY FIELDS */}
-            {data.sanction_type === "monetary" && (
-                <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                        Monetary Amount
-                    </label>
-                    <input
-                        type="number"
-                        value={data.monetary_amount}
-                        onChange={(e) =>
-                            setData({ ...data, monetary_amount: e.target.value })
-                        }
+            {sanctionType === "monetary" && (
+                <Form.Item
+                    label="Monetary Amount"
+                    name="monetary_amount"
+                    rules={[
+                        { required: true, message: "Monetary amount is required" },
+                    ]}
+                >
+                    <InputNumber
+                        style={{ width: "100%" }}
                         placeholder="Enter amount"
-                        className={`w-full px-3.5 py-2.5 text-sm border rounded-lg ${errors.monetary_amount
-                            ? "border-red-300"
-                            : "border-gray-300"
-                            }`}
+                        min={0}
                     />
-                    {errors.monetary_amount && (
-                        <p className="text-red-600 text-sm mt-1.5">
-                            {errors.monetary_amount[0]}
-                        </p>
-                    )}
-                </div>
+                </Form.Item>
             )}
 
             {/* SERVICE FIELDS */}
-            {data.sanction_type === "service" && (
+            {sanctionType === "service" && (
                 <>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                            Service Time
-                        </label>
-                        <input
-                            type="number"
-                            value={data.service_time}
-                            onChange={(e) =>
-                                setData({ ...data, service_time: e.target.value })
-                            }
+                    <Form.Item
+                        label="Service Time"
+                        name="service_time"
+                        rules={[
+                            { required: true, message: "Service time is required" },
+                        ]}
+                    >
+                        <InputNumber
+                            style={{ width: "100%" }}
                             placeholder="Enter service time"
-                            className={`w-full px-3.5 py-2.5 text-sm border rounded-lg ${errors.service_time
-                                ? "border-red-300"
-                                : "border-gray-300"
-                                }`}
+                            min={0}
                         />
-                        {errors.service_time && (
-                            <p className="text-red-600 text-sm mt-1.5">
-                                {errors.service_time[0]}
-                            </p>
-                        )}
-                    </div>
+                    </Form.Item>
 
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                            Time Type
-                        </label>
-                        <select
-                            value={data.service_time_type}
-                            onChange={(e) =>
-                                setData({
-                                    ...data,
-                                    service_time_type: e.target.value,
-                                })
-                            }
-                            className={`w-full px-3.5 py-2.5 text-sm border rounded-lg ${errors.service_time_type
-                                ? "border-red-300"
-                                : "border-gray-300"
-                                }`}
-                        >
-                            <option value="">Select type</option>
-                            <option value="minutes">Minutes</option>
-                            <option value="hours">Hours</option>
-                        </select>
-
-                        {errors.service_time_type && (
-                            <p className="text-red-600 text-sm mt-1.5">
-                                {errors.service_time_type[0]}
-                            </p>
-                        )}
-                    </div>
+                    <Form.Item
+                        label="Time Type"
+                        name="service_time_type"
+                        rules={[
+                            { required: true, message: "Time type is required" },
+                        ]}
+                    >
+                        <Select
+                            placeholder="Select type"
+                            options={[
+                                { value: "minutes", label: "Minutes" },
+                                { value: "hours", label: "Hours" },
+                            ]}
+                        />
+                    </Form.Item>
                 </>
             )}
 
-            <button
-                type="submit"
-                disabled={processing}
-                className="w-full px-4 py-2.5 text-sm font-medium text-white bg-blue-600 rounded-lg shadow-sm hover:bg-blue-700 transition disabled:opacity-50"
-            >
-                {processing ? "Saving..." : "Save Sanction"}
-            </button>
-        </form>
+            {/* SUBMIT */}
+            <Form.Item style={{ marginTop: 8 }}>
+                <Button
+                    type="primary"
+                    htmlType="submit"
+                    loading={processing}
+                    block
+                >
+                    Save Sanction
+                </Button>
+            </Form.Item>
+
+        </Form>
     );
 }

@@ -41,6 +41,11 @@ class User extends Authenticatable
         return $this->user_role === 'student';
     }
 
+    public function isGuidanceCounselor()
+    {
+        return $this->user_role === 'guidance_counselor';
+    }
+
     public function setUserIdNoAttribute($value)
     {
         $this->attributes['user_id_no'] = strtoupper($value);
@@ -49,5 +54,10 @@ class User extends Authenticatable
     public function information()
     {
         return $this->hasOne(UserInformation::class, 'user_id_no', 'user_id_no');
+    }
+
+    public function clubJoinRequests()
+    {
+        return $this->hasMany(CampusClubJoinRequest::class);
     }
 }

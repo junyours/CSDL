@@ -66,16 +66,22 @@ class DashboardController extends Controller
             return null;
         }
 
+        $enrollments = collect($student['enrolled_students'] ?? []);
+
+        $currentEnrollment = $enrollments->first(function ($enrollment) {
+            return data_get($enrollment, 'year_section.school_year.is_current') == 1;
+        });
+
         return [
             'first_name' => $student['first_name'] ?? null,
-            'middle_name' => $student['middle_name'] ?? null,
             'last_name' => $student['last_name'] ?? null,
-            'gender' => $student['gender'] ?? null,
+            'middle_name' => $student['middle_name'] ?? null,
             'birthday' => $student['birthday'] ?? null,
             'email_address' => $student['email_address'] ?? null,
-            'contact_number' => $student['contact_number'] ?? null,
+            'gender' => $student['gender'] ?? null,
             'present_address' => $student['present_address'] ?? null,
-            'zip_code' => $student['zip_code'] ?? null,
+
+            'current_enrollment' => $currentEnrollment,
         ];
     }
 }

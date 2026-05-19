@@ -1,60 +1,59 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import axios from "axios";
-import toast from 'react-hot-toast';
-import { TrashIcon } from "@heroicons/react/24/outline";
+import {
+    Form,
+    Input,
+    Button,
+    Switch,
+    message,
+    Space,
+    Alert,
+    Divider,
+} from "antd";
+import { DeleteOutlined } from "@ant-design/icons";
 
-export default function Update({ auth, violation, onSuccess }) {
-    const [data, setData] = useState({
-        violation_code: "",
-        violation_description: "",
-        status: true,
-    });
-    const [errors, setErrors] = useState({});
+export default function Update({ violation, onSuccess }) {
+    const [form] = Form.useForm();
     const [processing, setProcessing] = useState(false);
 
-    // Prefill form with existing violation data
+    // Prefill form
     useEffect(() => {
         if (violation) {
-            setData({
+            form.setFieldsValue({
                 violation_code: violation.violation_code || "",
                 violation_description: violation.violation_description || "",
-                status: !!violation.status,
+                status: violation.status === 1, // true = active
             });
         }
-    }, [violation]);
+    }, [violation, form]);
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
+    const handleSubmit = async (values) => {
         setProcessing(true);
-        setErrors({});
-
-        // 🔥 PATCH URL without Ziggy
-        const updateUrl = `/setup/violation/${violation.id}`;
-
-        // Debugging logs
-        console.log("Update URL:", updateUrl);
-        console.log("Payload:", data);
-
-        const promise = axios.patch(updateUrl, data);
-
-        toast.promise(promise, {
-            loading: 'Updating violation...',
-            success: 'Violation updated successfully!',
-            error: 'Failed to update violation',
-        });
 
         try {
-            await promise;
+            const payload = {
+                ...values,
+                status: values.status ? 1 : 0, // convert back to backend format
+            };
+
+            await axios.patch(`/setup/violation/${violation.id}`, payload);
+
+            message.success("Violation updated successfully!");
+
             onSuccess?.();
-            setData({
-                violation_code: "",
-                violation_description: "",
-                status: true,
-            });
+
         } catch (error) {
             if (error.response?.status === 422) {
-                setErrors(error.response.data.errors);
+                const serverErrors = error.response.data.errors;
+
+                const formatted = Object.keys(serverErrors).map((key) => ({
+                    name: key,
+                    errors: [serverErrors[key][0]],
+                }));
+
+                form.setFields(formatted);
             } else {
+                message.error("Failed to update violation");
                 console.error(error);
             }
         } finally {
@@ -63,90 +62,100 @@ export default function Update({ auth, violation, onSuccess }) {
     };
 
     return (
-        <form onSubmit={handleSubmit} className="space-y-6">
-            <div>
-                <label htmlFor="violation_code" className="block text-sm font-medium text-gray-700 mb-1.5">
-                    Violation Code
-                </label>
-                <input
-                    id="violation_code"
-                    type="text"
-                    value={data.violation_code}
-                    onChange={(e) => setData({ ...data, violation_code: e.target.value })}
-                    className={`w-full px-3.5 uppercase placeholder:normal-case py-2.5 text-sm text-gray-900 bg-white border ${errors.violation_code ? 'border-red-300' : 'border-gray-300'
-                        } rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200 placeholder:text-gray-400`}
-                    placeholder="Enter violation code"
-                />
-                {errors.violation_code && (
-                    <p className="mt-1.5 text-sm text-red-600">{errors.violation_code[0]}</p>
-                )}
-            </div>
+        <Form
+            form={form}
+            layout="vertical"
+            onFinish={handleSubmit}
+        >
 
-            <div>
-                <label htmlFor="violation_description" className="block text-sm font-medium text-gray-700 mb-1.5">
-                    Description
-                </label>
-                <textarea
-                    id="violation_description"
-                    value={data.violation_description}
-                    onChange={(e) => setData({ ...data, violation_description: e.target.value })}
+            {/* VIOLATION CODE */}
+            <Form.Item
+                label="Violation Code"
+                name="violation_code"
+                rules={[
+                    { required: true, message: "Violation code is required" },
+                ]}
+            >
+                <Input
+                    placeholder="Enter violation code"
+                    style={{ textTransform: "uppercase" }}
+                />
+            </Form.Item>
+
+            {/* DESCRIPTION */}
+            <Form.Item
+                label="Description"
+                name="violation_description"
+            >
+                <Input.TextArea
                     rows={4}
-                    className={`w-full px-3.5 py-2.5 text-sm text-gray-900 bg-white border ${errors.violation_description ? 'border-red-300' : 'border-gray-300'
-                        } rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200 placeholder:text-gray-400`}
                     placeholder="Describe the violation"
                 />
-                {errors.violation_description && (
-                    <p className="mt-1.5 text-sm text-red-600">{errors.violation_description[0]}</p>
-                )}
-            </div>
+            </Form.Item>
 
-            <div
-                className={`flex flex-col gap-1 transition-all ${data.status === 0 ? "border border-red-500 rounded-lg p-2" : ""
-                    }`}
+            <Divider />
+
+            {/* STATUS / DELETE SECTION */}
+            <Form.Item
+                name="status"
+                valuePropName="checked"
             >
-                <div className="flex items-center justify-between">
+                <div>
+                    <Space
+                        align="center"
+                        style={{ width: "100%", justifyContent: "space-between" }}
+                    >
+                        <Space>
+                            <div>
+                                <div style={{ fontWeight: 500 }}>
+                                    Move to bin
+                                </div>
+                                <div style={{ fontSize: 12, color: "#888" }}>
+                                    This action cannot be undone
+                                </div>
+                            </div>
+                        </Space>
 
-                    {/* Icon + Text */}
-                    <div className="flex items-center gap-2">
-                        <TrashIcon className="h-5 w-5 text-red-600" />
+                        <Form.Item
+                            name="status"
+                            valuePropName="checked"
+                            noStyle
+                        >
+                            <Switch
+                                checkedChildren="Delete"
+                                unCheckedChildren="Undo"
+                            />
+                        </Form.Item>
+                    </Space>
 
-                        <div className="flex flex-col justify-center">
-                            <label htmlFor="status" className="text-sm font-medium text-gray-700">
-                                Move to bin
-                            </label>
-                            <p className="text-xs text-gray-500">
-                                This action cannot be undone.
-                            </p>
-                        </div>
-                    </div>
-
-                    {/* Toggle */}
-                    <label className="relative inline-flex items-center cursor-pointer">
-                        <input
-                            id="status"
-                            type="checkbox"
-                            checked={data.status === 0}
-                            onChange={(e) =>
-                                setData({
-                                    ...data,
-                                    status: e.target.checked ? 0 : 1,
-                                })
-                            }
-                            className="sr-only peer"
-                        />
-                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-red-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-red-600"></div>
-                    </label>
-
+                    {/* Warning */}
+                    <Form.Item shouldUpdate noStyle>
+                        {({ getFieldValue }) =>
+                            !getFieldValue("status") && (
+                                <Alert
+                                    type="warning"
+                                    showIcon
+                                    message="This violation will be marked as inactive"
+                                    style={{ marginTop: 12 }}
+                                />
+                            )
+                        }
+                    </Form.Item>
                 </div>
-            </div>
+            </Form.Item>
 
-            <button
-                type="submit"
-                disabled={processing}
-                className="w-full px-4 py-2.5 text-sm font-medium text-white bg-blue-600 rounded-lg shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-                {processing ? 'Updating...' : 'Update Violation'}
-            </button>
-        </form>
+            {/* SUBMIT */}
+            <Form.Item>
+                <Button
+                    type="primary"
+                    htmlType="submit"
+                    loading={processing}
+                    block
+                >
+                    Update
+                </Button>
+            </Form.Item>
+
+        </Form>
     );
 }

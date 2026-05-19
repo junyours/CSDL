@@ -1,226 +1,275 @@
 <!DOCTYPE html>
 <html>
+
 <head>
     <title>CSDL Violation Report - {{ $user->user_id_no }}</title>
-    <link rel="icon" type="image/png" href="{{ asset('favicon.png') }}">
+
     <style>
-        @page {
-            margin: 0cm 0cm;
-        }
         body {
-            font-family: 'Helvetica', 'Arial', sans-serif;
+            font-family: Helvetica, Arial, sans-serif;
             font-size: 11px;
-            color: #334155;
-            margin: 1.5cm;
-            position: relative;
+            color: #000;
+            margin: 40px;
         }
 
-        .watermark {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%) rotate(-45deg);
-            font-size: 80px;
-            color: rgba(226, 232, 240, 0.4);
-            font-weight: bold;
-            z-index: -1000;
-            width: 100%;
-            text-align: center;
-            text-transform: uppercase;
-            letter-spacing: 10px;
+        /* HEADER */
+        .header {
+            border-bottom: 2px solid #000;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
         }
 
-        /* Modern Header Layout */
-        .header-container {
+        .header table {
             width: 100%;
-            border-bottom: 2px solid #1e3a8a;
-            padding-bottom: 15px;
-            margin-bottom: 30px;
         }
+
+        .header img {
+            width: 60px;
+        }
+
         .school-name {
-            font-size: 18px;
-            font-weight: 900;
-            color: #1e3a8a;
-            text-transform: uppercase;
-        }
-        .dept-name {
-            font-size: 10px;
-            color: #64748b;
-            letter-spacing: 1px;
+            font-size: 16px;
+            font-weight: bold;
         }
 
-        /* Digital ID Card Styling */
-        .student-info-bar {
-            background: #f8fafc;
-            padding: 15px;
-            border-radius: 8px;
-            border-left: 4px solid #1e3a8a;
-            margin-bottom: 25px;
+        .dept {
+            font-size: 11px;
         }
 
-        /* Table Styling */
-        table {
+        /* INFO */
+        .info {
+            margin-bottom: 20px;
+        }
+
+        .info table {
+            width: 100%;
+        }
+
+        .info td {
+            padding: 5px;
+            vertical-align: top;
+        }
+
+        .label {
+            font-size: 9px;
+            color: #555;
+        }
+
+        .value {
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        /* COUNT */
+        .count {
+            margin-bottom: 10px;
+        }
+
+        /* TABLE */
+        table.data {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 10px;
-        }
-        th {
-            background-color: #1e3a8a;
-            color: white;
-            text-transform: uppercase;
-            font-size: 9px;
-            letter-spacing: 0.5px;
-            padding: 10px;
-            text-align: left;
-        }
-        td {
-            padding: 12px 10px;
-            border-bottom: 1px solid #e2e8f0;
-        }
-        tr:nth-child(even) {
-            background-color: #f1f5f9;
         }
 
-        /* Status Badges */
+        table.data th {
+            border: 1px solid #000;
+            padding: 6px;
+            font-size: 10px;
+            text-align: left;
+            background: #eee;
+        }
+
+        table.data td {
+            border: 1px solid #000;
+            padding: 8px;
+            vertical-align: top;
+        }
+
+        /* BADGE SIMPLIFIED */
         .badge {
             display: inline-block;
-            padding: 4px 8px;
-            border-radius: 4px;
+            border: 1px solid #000;
+            padding: 2px 5px;
             font-size: 9px;
-            font-weight: bold;
-        }
-        .badge-violation { background-color: #dbeafe; color: #1e40af; }
-        .badge-money { background-color: #fee2e2; color: #991b1b; }
-        .badge-service { background-color: #fef9c3; color: #854d0e; }
-
-        /* App Generated Badge */
-        .verified-ribbon {
-            position: absolute;
-            top: 10px;
-            right: -10px;
-            background: #10b981;
-            color: white;
-            padding: 5px 15px;
-            font-weight: bold;
-            font-size: 9px;
-            border-radius: 4px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin: 1px;
         }
 
+        /* FOOTER */
         .footer {
-            margin-top: 50px;
-            width: 100%;
+            margin-top: 40px;
         }
-        .qr-placeholder {
-            font-size: 8px;
-            color: #94a3b8;
+
+        .signature {
+            margin-top: 40px;
+        }
+
+        .line {
+            border-top: 1px solid #000;
+            width: 200px;
             text-align: center;
+            margin-top: 40px;
+            padding-top: 5px;
+        }
+
+        .qr {
+            text-align: right;
+        }
+
+        .qr img {
+            width: 100px;
+        }
+
+        .qr-label {
+            font-size: 9px;
         }
     </style>
 </head>
 
 <body>
-    <div class="verified-ribbon">OFFICIALLY APP GENERATED</div>
-    <div class="watermark">myOCC</div>
-    <div class="header-container">
-        <table style="width: 100%; border: none;">
+
+    <!-- HEADER -->
+    <div class="header">
+        <table>
             <tr>
-                <td style="width: 70px; border: none; padding: 0;">
-                    <img src="{{ public_path('assets/images/school-logo.png') }}" width="60">
+                <td width="70">
+                    <img src="{{ public_path('assets/images/school-logo.png') }}">
                 </td>
-                <td style="border: none; padding: 0 15px;">
+
+                <td>
                     <div class="school-name">Opol Community College</div>
-                    <div class="dept-name">Center for Student Development and Leadership</div>
-                    <div style="font-weight: bold; font-size: 11px; margin-top: 5px;">OFFICE OF THE CSDL</div>
+                    <div class="dept">Center for Student Development and Leadership</div>
+                    <div class="dept"><strong>OFFICE OF THE CSDL</strong></div>
                 </td>
-                <td style="width: 70px; border: none; padding: 0; text-align: right;">
-                    <img src="{{ public_path('assets/images/csdl-logo.jpg') }}" width="60">
+
+                <td width="70" align="right">
+                    <img src="{{ public_path('assets/images/defaultMode-csdl-logo.png') }}">
                 </td>
             </tr>
         </table>
     </div>
 
-    <div class="student-info-bar">
-        <table style="width: 100%; border: none; background: transparent;">
-            <tr style="background: transparent;">
-                <td style="border: none; padding: 0;">
-                    <span style="color: #64748b; font-size: 9px; text-transform: uppercase;">ID Number</span><br>
-                    <span style="font-size: 16px; font-weight: bold; color: #0f172a;">{{ $user->user_id_no }}</span>
+    <!-- INFO -->
+    <div class="info">
+        <table>
+            <tr>
+                <td>
+                    <div class="label">Full Name</div>
+                    <div class="value">
+                        {{ $student['first_name'] }} {{ $student['middle_name'] }} {{ $student['last_name'] }}
+                    </div>
                 </td>
-                <td style="border: none; padding: 0; text-align: right;">
-                    <span style="color: #64748b; font-size: 9px; text-transform: uppercase;">Date Generated</span><br>
-                    <span style="font-size: 12px; font-weight: bold;">{{ now()->format('F d, Y') }}</span>
+
+                <td>
+                    <div class="label">ID Number</div>
+                    <div class="value">{{ $user->user_id_no }}</div>
                 </td>
+
+                <td>
+                    <div class="label">Generated</div>
+                    <div class="value">{{ now()->format('M d, Y, h:i A') }}</div>
+                </td>
+            </tr>
+
+            <tr>
+                <td>
+                    <div class="label">Year & Section</div>
+                    <div class="value">
+                        {{ data_get($student, 'current_enrollment.year_section.year_level.year_level', '-') }}
+                        - {{ data_get($student, 'current_enrollment.year_section.section', '-') }}
+                    </div>
+                </td>
+
+                <td>
+                    <div class="label">Course</div>
+                    <div class="value">
+                        {{ data_get($student, 'current_enrollment.year_section.course.course_name_abbreviation', '-') }}
+                    </div>
+                </td>
+
+                <td></td>
             </tr>
         </table>
     </div>
 
-    <table>
+    <!-- COUNT -->
+    <div class="count">
+        Total Unsettled Violations:
+        <strong>{{ $violations->count() }}</strong>
+    </div>
+
+    <!-- TABLE -->
+    <table class="data">
         <thead>
             <tr>
-                <th>Ref #</th>
-                <th>Issued Date & Time</th>
-                <th>Violation Details</th>
-                <th>Sanction</th>
+                <th width="15%">Ref #</th>
+                <th width="20%">Date</th>
+                <th width="35%">Violations</th>
+                <th width="30%">Sanction</th>
             </tr>
         </thead>
+
         <tbody>
             @forelse($violations as $row)
                 <tr>
-                    <td style="font-family: monospace; font-weight: bold; color: #475569;">#{{ $row->reference_no }}</td>
-                    <td>{{ \Carbon\Carbon::parse($row->issued_date_time)->format('M d, Y') }}<br>
-                        <span style="font-size: 9px; color: #94a3b8;">{{ \Carbon\Carbon::parse($row->issued_date_time)->format('h:i A') }}</span>
-                    </td>
+                    <td>#{{ $row->reference_no }}</td>
+
                     <td>
-                        @if($row->violation_codes)
-                            @foreach($row->violation_codes as $code)
-                                <span class="badge badge-violation">{{ $code }}</span>
-                            @endforeach
-                        @endif
+                        {{ \Carbon\Carbon::parse($row->issued_date_time)->format('M d, Y') }}<br>
+                        <small>
+                            {{ \Carbon\Carbon::parse($row->issued_date_time)->format('h:i A') }}
+                        </small>
                     </td>
+
+                    <td>
+                        @foreach($row->violation_codes as $code)
+                            <span class="badge">{{ $code }}</span>
+                        @endforeach
+                    </td>
+
                     <td>
                         @if($row->sanction)
-                            @php $type = $row->sanction->sanction_type; @endphp
-                            <div class="badge {{ $type === 'monetary' ? 'badge-money' : 'badge-service' }}">
-                                {{ $row->sanction->sanction_name }}
-                            </div>
-                            <div style="font-size: 9px; margin-top: 4px; font-weight: bold;">
-                                @if($type === 'monetary')
-                                    PHP {{ number_format($row->sanction->monetary_amount, 2) }}
+                            {{ $row->sanction->sanction_name }}<br>
+
+                            <small>
+                                @if($row->sanction->sanction_type === 'monetary')
+                                    ₱{{ number_format($row->sanction->monetary_amount, 2) }}
                                 @else
-                                    {{ $row->sanction->service_time }} {{ ucfirst($row->sanction->service_time_type) }}
+                                    {{ $row->sanction->service_time }}
+                                    {{ ucfirst($row->sanction->service_time_type) }}
                                 @endif
-                            </div>
+                            </small>
                         @else
-                            <span style="color: #cbd5e1;">Pending</span>
+                            <span>Pending</span>
                         @endif
                     </td>
                 </tr>
             @empty
                 <tr>
-                    <td colspan="4" style="text-align:center; padding: 40px; color: #94a3b8;">No unsettled violations found. Record is clear.</td>
+                    <td colspan="4" align="center">
+                        No unsettled violations found.
+                    </td>
                 </tr>
             @endforelse
         </tbody>
     </table>
 
+    <!-- FOOTER -->
     <div class="footer">
-        <table style="width: 100%; border: none;">
-            <tr style="background: transparent;">
-                <td style="width: 50%; border: none; vertical-align: bottom;">
-                    <div style="border-top: 1px solid #334155; width: 200px; padding-top: 5px; text-align: center;">
-                        <span style="font-size: 9px; font-weight: bold; text-transform: uppercase;">Authorized Personnel</span>
+        <table width="100%">
+            <tr>
+                <td>
+                    <div class="line">
+                        Authorized Personnel
                     </div>
                 </td>
-                <td style="width: 50%; border: none; text-align: right;">
-                    <div style="display: inline-block; text-align: left; border: 1px dashed #cbd5e1; padding: 10px; border-radius: 8px;">
-                        <span style="font-size: 8px; font-weight: bold; color: #10b981;">DIGITAL VERIFICATION</span><br>
-                        <span style="font-size: 8px; color: #64748b;">Timestamp: {{ now()->format('Ymd-His') }}</span><br>
-                        <span style="font-size: 8px; color: #64748b;">ID: {{ md5($user->user_id_no . now()) }}</span>
-                    </div>
+
+                <td class="qr">
+                    <img src="{{ $qr }}">
                 </td>
             </tr>
         </table>
     </div>
+
 </body>
+
 </html>

@@ -1,47 +1,43 @@
 import { useState } from "react";
 import axios from "axios";
-import toast from "react-hot-toast";
+import {
+    Form,
+    Input,
+    Button,
+    Switch,
+    message,
+    Space,
+} from "antd";
 
 export default function Create({ onSuccess }) {
-    const [data, setData] = useState({
-        violation_code: "",
-        violation_description: "",
-        status: true,
-    });
-
-    const [errors, setErrors] = useState({});
+    const [form] = Form.useForm();
     const [processing, setProcessing] = useState(false);
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
+    const handleSubmit = async (values) => {
         setProcessing(true);
-        setErrors({});
-
-        // Use relative URL so it works in production
-        const promise = axios.post("/setup/violation", data);
-
-        toast.promise(promise, {
-            loading: "Creating violation...",
-            success: "Violation created successfully!",
-            error: "Failed to create violation",
-        });
 
         try {
-            await promise;
+            await axios.post("/setup/violation", values);
 
-            onSuccess?.(); // auto-close modal + refresh table
+            message.success("Violation created successfully!");
 
-            // Reset form
-            setData({
-                violation_code: "",
-                violation_description: "",
-                status: true,
-            });
+            form.resetFields();
+
+            onSuccess?.(); // close modal + refresh
 
         } catch (error) {
             if (error.response?.status === 422) {
-                setErrors(error.response.data.errors);
+                const serverErrors = error.response.data.errors;
+
+                // Map Laravel errors → AntD form
+                const formatted = Object.keys(serverErrors).map((key) => ({
+                    name: key,
+                    errors: [serverErrors[key][0]],
+                }));
+
+                form.setFields(formatted);
             } else {
+                message.error("Failed to create violation");
                 console.error(error);
             }
         } finally {
@@ -50,67 +46,51 @@ export default function Create({ onSuccess }) {
     };
 
     return (
-        <form onSubmit={handleSubmit} className="space-y-6">
-
+        <Form
+            form={form}
+            layout="vertical"
+            onFinish={handleSubmit}
+            initialValues={{
+                violation_code: "",
+                violation_description: "",
+                status: true,
+            }}
+        >
             {/* VIOLATION CODE */}
-            <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                    Violation Code
-                </label>
-                <input
-                    type="text"
-                    value={data.violation_code}
-                    onChange={(e) =>
-                        setData({ ...data, violation_code: e.target.value })
-                    }
-                    placeholder="Enter violation code"
-                    className={`w-full px-3.5 uppercase placeholder:normal-case py-2.5 text-sm border rounded-lg ${errors.violation_code ? "border-red-300" : "border-gray-300"
-                        }`}
+            <Form.Item
+                label="Violation Code"
+                name="violation_code"
+                rules={[
+                    { required: true, message: "Violation code is required" },
+                ]}
+            >
+                <Input
+                    style={{ textTransform: "uppercase" }}
                 />
-                {errors.violation_code && (
-                    <p className="text-red-600 text-sm mt-1.5">
-                        {errors.violation_code[0]}
-                    </p>
-                )}
-            </div>
+            </Form.Item>
 
             {/* DESCRIPTION */}
-            <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                    Description
-                </label>
-                <textarea
-                    rows={4}
-                    value={data.violation_description}
-                    onChange={(e) =>
-                        setData({ ...data, violation_description: e.target.value })
-                    }
-                    placeholder="Optional description"
-                    className={`w-full px-3.5 py-2.5 text-sm border rounded-lg ${errors.violation_description ? "border-red-300" : "border-gray-300"
-                        }`}
-                />
-                {errors.violation_description && (
-                    <p className="text-red-600 text-sm mt-1.5">
-                        {errors.violation_description[0]}
-                    </p>
-                )}
-            </div>
-
-            {/* STATUS */}
-            <input
-                type="checkbox"
-                hidden
-                checked={data.status}
-                onChange={(e) => setData({ ...data, status: e.target.checked })}
-            />
-
-            <button
-                type="submit"
-                disabled={processing}
-                className="w-full px-4 py-2.5 text-sm font-medium text-white bg-blue-600 rounded-lg shadow-sm hover:bg-blue-700 transition disabled:opacity-50"
+            <Form.Item
+                label="Description"
+                name="violation_description"
             >
-                {processing ? "Saving..." : "Save Violation"}
-            </button>
-        </form>
+                <Input.TextArea
+                    rows={4}
+                    placeholder="Optional description"
+                />
+            </Form.Item>
+
+            {/* SUBMIT */}
+            <Form.Item style={{ marginTop: 8 }}>
+                <Button
+                    type="primary"
+                    htmlType="submit"
+                    loading={processing}
+                    block
+                >
+                    Save
+                </Button>
+            </Form.Item>
+        </Form>
     );
 }

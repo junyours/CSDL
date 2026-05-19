@@ -1,52 +1,70 @@
+import React, { useRef, useState } from "react";
 import {
-    UserIcon, Mail, Phone, Calendar, MapPin, LogOut, VenusAndMars, Camera, ChevronDown
-} from "lucide-react";
+    Layout, Card, Avatar, Typography, Row, Col, Button,
+    Descriptions, Modal, Form, Input, Divider, Slider,
+    Space,
+    Alert,
+    Collapse
+} from "antd";
+import {
+    UserOutlined, MailOutlined, PhoneOutlined, CalendarOutlined,
+    EnvironmentOutlined, LockOutlined, CameraOutlined, LogoutOutlined,
+    ManOutlined
+} from "@ant-design/icons";
 import AppLayout from "../../Layouts/AppLayout";
 import { router } from "@inertiajs/react";
-import { useRef, useState } from "react";
 import toast from "react-hot-toast";
 import axios from 'axios';
 import Cropper from "react-easy-crop";
 
+const { Title, Text } = Typography;
+const { Panel } = Collapse;
+
 export default function Index({ auth, studentData, userInfoData, avatar }) {
     const user = auth?.user;
+    const data = user?.user_role === "student" ? studentData : userInfoData;
+
+    // Avatar States
     const [imageSrc, setImageSrc] = useState(null);
     const [crop, setCrop] = useState({ x: 0, y: 0 });
     const [zoom, setZoom] = useState(1);
     const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
     const [showCropModal, setShowCropModal] = useState(false);
     const [isUploading, setIsUploading] = useState(false);
-    const [showChangePassword, setShowChangePassword] = useState(false);
-    const [newPassword, setNewPassword] = useState("");
-    const [confirmPassword, setConfirmPassword] = useState("");
+
+    // Password States
     const [loadingPassword, setLoadingPassword] = useState(false);
+    const [passwordForm] = Form.useForm();
     const fileInputRef = useRef(null);
 
+    // Handlers
     const handleLogout = () => router.post("/logout");
-    const handleAvatarClick = () => fileInputRef.current.click();
+
     const handleFileChange = (e) => {
         const file = e.target.files[0];
         if (!file) return;
         const reader = new FileReader();
-        reader.onload = () => { setImageSrc(reader.result); setShowCropModal(true); };
+        reader.onload = () => {
+            setImageSrc(reader.result);
+            setShowCropModal(true);
+        };
         reader.readAsDataURL(file);
     };
+
     const onCropComplete = (_, pixels) => setCroppedAreaPixels(pixels);
-    const createImage = (url) => new Promise((res, rej) => {
-        const img = new Image();
-        img.addEventListener("load", () => res(img));
-        img.addEventListener("error", (e) => rej(e));
-        img.setAttribute("crossOrigin", "anonymous");
-        img.src = url;
-    });
 
     const getCroppedImg = async (imageSrc, pixelCrop) => {
-        const image = await createImage(imageSrc);
+        const image = await new Promise((res, rej) => {
+            const img = new Image();
+            img.addEventListener("load", () => res(img));
+            img.addEventListener("error", (e) => rej(e));
+            img.setAttribute("crossOrigin", "anonymous");
+            img.src = imageSrc;
+        });
         const canvas = document.createElement("canvas");
         const ctx = canvas.getContext("2d");
-        const size = 400;
-        canvas.width = size; canvas.height = size;
-        ctx.drawImage(image, pixelCrop.x, pixelCrop.y, pixelCrop.width, pixelCrop.height, 0, 0, size, size);
+        canvas.width = 400; canvas.height = 400;
+        ctx.drawImage(image, pixelCrop.x, pixelCrop.y, pixelCrop.width, pixelCrop.height, 0, 0, 400, 400);
         return new Promise((resolve) => canvas.toBlob((blob) => resolve(blob), "image/jpeg", 0.9));
     };
 
@@ -56,192 +74,216 @@ export default function Index({ auth, studentData, userInfoData, avatar }) {
         try {
             const croppedBlob = await getCroppedImg(imageSrc, croppedAreaPixels);
             router.post("/profile/avatar", { avatar: croppedBlob }, {
-                forceFormData: true, preserveScroll: true,
-                onSuccess: () => { setShowCropModal(false); setImageSrc(null); router.reload({ only: ['avatar'] }); }
+                forceFormData: true,
+                preserveScroll: true,
+                onSuccess: () => {
+                    setShowCropModal(false);
+                    setImageSrc(null);
+                    router.reload({ only: ['avatar'] });
+                }
             });
             toast.success("Profile picture updated!");
-        } catch (e) { toast.error("Upload failed"); } finally { setIsUploading(false); }
+        } catch (e) {
+            toast.error("Upload failed");
+        } finally {
+            setIsUploading(false);
+        }
     };
 
-    const handleChangePassword = async (e) => {
-        e.preventDefault();
+    const onFinishPassword = async (values) => {
         setLoadingPassword(true);
         try {
             const res = await axios.post('/profile/change-password', {
-                new_password: newPassword, new_password_confirmation: confirmPassword,
+                new_password: values.newPassword,
+                new_password_confirmation: values.confirmPassword,
             });
             toast.success(res.data.message);
-            setNewPassword(''); setConfirmPassword('');
-            setShowChangePassword(false);
-        } catch (err) { toast.error(err.response?.data?.errors?.new_password?.[0] || "Failed to change password"); }
-        finally { setLoadingPassword(false); }
+            passwordForm.resetFields();
+        } catch (err) {
+            toast.error(err.response?.data?.errors?.new_password?.[0] || "Failed to change password");
+        } finally {
+            setLoadingPassword(false);
+        }
     };
-
-    const data = user?.user_role === "student" ? studentData : userInfoData;
 
     return (
         <AppLayout user={user} breadcrumbs={["Profile"]}>
-            <div className="max-w-5xl mx-auto md:mx-auto md:px-4">
-                <div className="bg-white shadow-sm border border-slate-200 md:rounded-b-xl overflow-hidden mb-6">
-                    <div className="h-full md:h-full w-full relative overflow-hidden">
-                        <img
-                            src="/assets/images/cover.jpg"
-                            alt="Cover"
-                            className="w-full h-full object-cover"
-                        />
-                        <div className="absolute inset-0 bg-black/10"></div>
-                    </div>
+            <div style={{ maxWidth: 1000, margin: '0 auto', padding: '16px 16px' }}>
 
-                    <div className="px-4 md:px-8 pb-6">
-                        <div className="relative flex flex-col md:flex-row items-center md:items-end -mt-12 md:-mt-16 mb-4 md:gap-6">
-                            <div
-                                onClick={handleAvatarClick}
-                                className="relative group w-32 h-32 md:w-40 md:h-40 rounded-full border-4 border-white shadow-md overflow-hidden bg-slate-200 cursor-pointer flex-shrink-0"
-                            >
-                                {avatar ? (
-                                    <img src={avatar} className="w-full h-full object-cover" />
-                                ) : (
-                                    <div className="w-full h-full flex items-center justify-center">
-                                        <UserIcon className="w-12 h-12 text-slate-400" />
-                                    </div>
-                                )}
-                                <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <Camera className="text-white w-6 h-6" />
+                {/* Header Card */}
+                <Card
+                    bordered={false}
+                    className="overflow-hidden mb-6 shadow-sm"
+                    bodyStyle={{ padding: 0 }}
+                >
+                    <div
+                        className="w-full"
+                        style={{
+                            backgroundImage: "url('/assets/images/cover.jpg')",
+                            backgroundSize: "cover",
+                            backgroundPosition: "center",
+                            backgroundRepeat: "no-repeat",
+                            aspectRatio: "3 / 1", // 🔥 responsive height
+                        }}
+                    />
+
+                    <div style={{ padding: '0 24px 24px', marginTop: '-20px' }}>
+                        <Row gutter={[24, 24]} align="bottom">
+                            <Col xs={24} sm={6} md={4} style={{ textAlign: 'center' }}>
+                                <div style={{ position: 'relative', display: 'inline-block' }}>
+                                    <Avatar
+                                        size={120}
+                                        src={avatar}
+                                        icon={<UserOutlined />}
+                                        className="border-4 border-white shadow-md bg-slate-200"
+                                    />
+                                    <Button
+                                        type="primary"
+                                        shape="circle"
+                                        icon={<CameraOutlined />}
+                                        style={{ position: 'absolute', bottom: 5, right: 5 }}
+                                        onClick={() => fileInputRef.current.click()}
+                                    />
+                                    <input type="file" ref={fileInputRef} onChange={handleFileChange} accept="image/*" className="hidden" />
                                 </div>
-                            </div>
-
-                            <div className="text-center mt-2 md:text-left md:mb-4 flex-1">
-                                <h2 className="text-sm md:text-2xl font-bold text-slate-900 leading-tight">
-                                    {data?.first_name} {data?.middle_name} {data?.last_name}
-                                </h2>
-                                <p className="text-slate-500 text-sm py-2 md:text-base font-medium">{user?.user_id_no}</p>
-                            </div>
-
-                            <input type="file" ref={fileInputRef} onChange={handleFileChange} accept="image/*" className="hidden" />
-                        </div>
+                            </Col>
+                            <Col xs={24} sm={18} md={20}>
+                                <Title level={4} style={{ marginBottom: 0 }} className="text-center md:text-left block sm:text-left block">
+                                    {data?.first_name} {data?.last_name}
+                                </Title>
+                                <Text className="text-center sm:text-left block" type="secondary">
+                                    {user?.user_id_no}
+                                </Text>
+                            </Col>
+                        </Row>
                     </div>
-                </div>
+                </Card>
 
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 px-4 md:px-0">
+                <Row gutter={[24, 24]}>
+                    {/* Details Column */}
+                    <Col xs={24} lg={10}>
+                        <Card title="Profile Information">
+                            <Space direction="vertical">
 
-                    {/* LEFT SIDEBAR - INFO (Facebook "Intro" style) */}
-                    <div className="lg:col-span-5 space-y-6">
-                        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 md:p-6">
-                            <h3 className="font-bold text-slate-800 text-base mb-4">Personal details</h3>
-                            <div className="space-y-5">
-                                <InfoRow icon={<VenusAndMars size={18} />} label="Gender" value={data?.gender || '-'} />
-                                <InfoRow icon={<Calendar size={18} />} label="Birthday" value={data?.birthday || '-'} />
-                                <InfoRow icon={<Mail size={18} />} label="Email Address" value={data?.email_address || '-'} />
-                                <InfoRow icon={<Phone size={18} />} label="Contact Number" value={data?.contact_number || '-'} />
-                                <InfoRow icon={<MapPin size={18} />} label="Current Address" value={`${data?.present_address || ''} ${data?.zip_code || ''}`.trim() || '-'} />
-                            </div>
-                        </div>
-                    </div>
+                                <Space><UserOutlined /> {data?.gender || "-"}</Space>
+                                <Space><CalendarOutlined /> {data?.birthday || "-"}</Space>
+                                <Space><MailOutlined /> {data?.email_address || "-"}</Space>
+                                <Space><PhoneOutlined /> {data?.contact_number || "-"}</Space>
+                                <Space><EnvironmentOutlined /> {data?.present_address || "-"}</Space>
 
-                    {/* RIGHT SIDE - ACTIONS & SETTINGS */}
-                    <div className="lg:col-span-7 space-y-6">
-                        {/* CHANGE PASSWORD */}
-                        <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                            <button
-                                onClick={() => setShowChangePassword(!showChangePassword)}
-                                className="w-full flex justify-between items-center p-5 hover:bg-slate-50 transition-colors"
+                            </Space>
+                        </Card>
+
+                        {user?.user_role !== "admin" && (
+                            <Alert
+                                type="info"
+                                message="Need to update your information?"
+                                description="For security reasons, changes to your profile must be verified. Please contact your administrator to request updates or corrections to your details."
+                                showIcon
+                                style={{ marginTop: 24 }}
+                            />
+                        )}
+
+                    </Col>
+
+
+                    {/* Security Column */}
+                    <Col xs={24} lg={14}>
+                        <Collapse>
+                            <Panel
+                                header={<Text strong>Change Password</Text>}
+                                key="1"
                             >
-                                <div className="text-left">
-                                    <span className="block font-bold text-slate-800 text-base">Security & Password</span>
-                                    <span className="text-xs text-slate-500 font-normal">Manage your account protection</span>
-                                </div>
-                                <ChevronDown className={`text-slate-400 transition-transform ${showChangePassword ? 'rotate-180' : ''}`} size={24} />
-                            </button>
-
-                            <div className={`overflow-hidden transition-all duration-300 ${showChangePassword ? "max-h-[500px] opacity-100 p-5 border-t border-slate-100" : "max-h-0 opacity-0"}`}>
-                                <form onSubmit={handleChangePassword} className="space-y-4 max-w-md">
-                                    <div className="space-y-1">
-                                        <label className="text-xs font-bold text-slate-500 uppercase ml-1">New Password</label>
-                                        <input
-                                            type="password"
-                                            placeholder="Enter new password"
-                                            value={newPassword}
-                                            onChange={(e) => setNewPassword(e.target.value)}
-                                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition"
-                                            required
-                                        />
-                                    </div>
-                                    <div className="space-y-1">
-                                        <label className="text-xs font-bold text-slate-500 uppercase ml-1">Confirm Password</label>
-                                        <input
-                                            type="password"
-                                            placeholder="Repeat new password"
-                                            value={confirmPassword}
-                                            onChange={(e) => setConfirmPassword(e.target.value)}
-                                            className={`w-full bg-slate-50 border rounded-xl px-4 py-3 text-sm outline-none transition ${newPassword && confirmPassword && newPassword !== confirmPassword ? 'border-red-400 focus:ring-red-500' : 'border-slate-200 focus:ring-indigo-500'}`}
-                                            required
-                                        />
-                                    </div>
-                                    {newPassword && confirmPassword && newPassword !== confirmPassword && (
-                                        <p className="text-red-500 text-xs">Passwords do not match.</p>
-                                    )}
-                                    <button
-                                        type="submit"
-                                        disabled={loadingPassword || (newPassword !== confirmPassword)}
-                                        className="w-full md:w-auto px-8 bg-indigo-600 text-white font-semibold py-3 rounded-xl shadow-indigo-100 shadow-lg hover:bg-indigo-700 active:scale-95 transition disabled:opacity-50"
+                                <Form
+                                    form={passwordForm}
+                                    layout="vertical"
+                                    onFinish={onFinishPassword}
+                                    requiredMark={false}
+                                >
+                                    <Form.Item
+                                        name="newPassword"
+                                        label="New Password"
+                                        rules={[{ required: true, message: 'Please enter a new password' }]}
                                     >
-                                        {loadingPassword ? "Updating..." : "Update Password"}
-                                    </button>
-                                </form>
-                            </div>
-                        </div>
+                                        <Input.Password prefix={<LockOutlined />} placeholder="New Password" />
+                                    </Form.Item>
 
-                        {/* LOGOUT */}
-                        <div className="pb-6">
-                            <button
-                                onClick={handleLogout}
-                                className="w-full md:w-full px-10 flex items-center justify-center gap-2 bg-white border border-red-100 text-red-600 font-bold py-4 rounded-xl hover:bg-red-50 transition active:scale-[0.98] shadow-sm"
-                            >
-                                <LogOut size={18} />
-                                Sign Out
-                            </button>
-                        </div>
-                    </div>
-                </div>
+                                    <Form.Item
+                                        name="confirmPassword"
+                                        label="Confirm Password"
+                                        dependencies={['newPassword']}
+                                        rules={[
+                                            { required: true, message: 'Please confirm your password' },
+                                            ({ getFieldValue }) => ({
+                                                validator(_, value) {
+                                                    if (!value || getFieldValue('newPassword') === value) {
+                                                        return Promise.resolve();
+                                                    }
+                                                    return Promise.reject(new Error('Passwords do not match!'));
+                                                },
+                                            }),
+                                        ]}
+                                    >
+                                        <Input.Password prefix={<LockOutlined />} placeholder="Confirm New Password" />
+                                    </Form.Item>
+
+                                    <Button type="primary" htmlType="submit" loading={loadingPassword} block>
+                                        Update Password
+                                    </Button>
+                                </Form>
+
+
+
+                            </Panel>
+                        </Collapse>
+
+                        <Divider />
+
+                        <Button
+                            danger
+                            block
+                            icon={<LogoutOutlined />}
+                            onClick={handleLogout}
+                            size="large"
+                        >
+                            Sign Out
+                        </Button>
+                    </Col>
+                </Row>
             </div>
 
-            {/* CROP MODAL */}
-            {showCropModal && (
-                <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                    <div className="bg-white rounded-3xl p-6 w-full max-w-md shadow-2xl animate-in fade-in zoom-in duration-200">
-                        <h1 className="text-xl font-bold text-slate-800 mb-4 text-center">Adjust Profile Photo</h1>
-                        <div className="relative w-full h-72 bg-slate-100 rounded-2xl overflow-hidden shadow-inner">
-                            <Cropper image={imageSrc} crop={crop} zoom={zoom} aspect={1} onCropChange={setCrop} onZoomChange={setZoom} onCropComplete={onCropComplete} />
-                        </div>
-                        <div className="mt-6 flex items-center gap-4">
-                            <span className="text-xs font-bold text-slate-400 uppercase">Zoom</span>
-                            <input type="range" min={1} max={3} step={0.1} value={zoom} onChange={(e) => setZoom(e.target.value)} className="flex-1 accent-indigo-600" />
-                        </div>
-                        <div className="flex gap-3 mt-8">
-                            <button onClick={() => setShowCropModal(false)} className="flex-1 py-3 text-slate-600 font-bold hover:bg-slate-50 rounded-xl transition">Cancel</button>
-                            <button onClick={handleCropSave} className="flex-1 py-3 bg-indigo-600 text-white font-bold rounded-xl shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition">Save Photo</button>
-                        </div>
-                    </div>
+            {/* Crop Modal */}
+            <Modal
+                title="Adjust Profile Photo"
+                open={showCropModal}
+                onOk={handleCropSave}
+                confirmLoading={isUploading}
+                onCancel={() => setShowCropModal(false)}
+                okText="Save Photo"
+                destroyOnClose
+            >
+                <div style={{ position: 'relative', width: '100%', height: 300, background: '#f0f0f0', borderRadius: 8, overflow: 'hidden' }}>
+                    <Cropper
+                        image={imageSrc}
+                        crop={crop}
+                        zoom={zoom}
+                        aspect={1}
+                        onCropChange={setCrop}
+                        onZoomChange={setZoom}
+                        onCropComplete={onCropComplete}
+                    />
                 </div>
-            )}
+                <div style={{ marginTop: 16 }}>
+                    <Text type="secondary">Zoom</Text>
+                    <Slider
+                        min={1}
+                        max={3}
+                        step={0.1}
+                        value={zoom}
+                        onChange={(val) => setZoom(val)}
+                    />
+                </div>
+            </Modal>
         </AppLayout>
-    );
-}
-
-function InfoRow({ icon, label, value }) {
-    return (
-        <div className="flex items-start gap-4 w-full">
-            <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-slate-50 text-indigo-500 flex-shrink-0">
-                {icon}
-            </div>
-            <div className="flex-1 min-w-0">
-                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-1">
-                    {label}
-                </p>
-                <p className="text-[13px] font-semibold text-slate-700 leading-tight break-words">
-                    {value}
-                </p>
-            </div>
-        </div>
     );
 }

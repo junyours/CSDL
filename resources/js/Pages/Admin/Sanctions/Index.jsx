@@ -5,9 +5,16 @@ import DataTable from "../../../Components/DataTable";
 import { PlusIcon } from "@heroicons/react/20/solid";
 import Create from "./Create";
 import Update from "./Update";
-import Modal from "../../../Components/Modal";
 import { CurrencyDollarIcon, WrenchScrewdriverIcon } from "@heroicons/react/24/outline";
 import { HandCoins, BrushCleaning } from "lucide-react";
+import { Button, Card, Col, Grid, Row, Typography, Modal, Tag } from "antd";
+import {
+    PlusOutlined,
+    SettingOutlined,
+} from "@ant-design/icons";
+
+const { Title, Text } = Typography;
+const { useBreakpoint } = Grid;
 
 export default function Index({ auth, sanctions, filters }) {
     const user = auth?.user;
@@ -24,17 +31,17 @@ export default function Index({ auth, sanctions, filters }) {
 
                 if (type === "monetary") {
                     return (
-                        <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-700">
+                        <Tag color={"gold"}>
                             MONETARY
-                        </span>
+                        </Tag>
                     );
                 }
 
                 if (type === "service") {
                     return (
-                        <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-700">
+                        <Tag color={"blue"}>
                             SERVICE
-                        </span>
+                        </Tag>
                     );
                 }
 
@@ -50,9 +57,9 @@ export default function Index({ auth, sanctions, filters }) {
             label: "Amount",
             render: (row) =>
                 row.sanction_type === "monetary" ? (
-                    <span className="inline-flex items-center px-2 py-1 text-xs font-semibold bg-yellow-100 text-yellow-700 rounded-full">
+                    <Tag color={"gold"}>
                         ₱{Number(row.monetary_amount).toLocaleString()}
-                    </span>
+                    </Tag>
                 ) : (
                     "-"
                 ),
@@ -63,9 +70,9 @@ export default function Index({ auth, sanctions, filters }) {
             label: "Service Time",
             render: (row) =>
                 row.sanction_type === "service" ? (
-                    <span className="inline-flex items-center px-2 py-1 text-xs font-semibold bg-green-100 text-green-700 rounded-full">
+                    <Tag color={"blue"}>
                         {row.service_time} {row.service_time_type}
-                    </span>
+                    </Tag>
                 ) : (
                     "-"
                 ),
@@ -96,27 +103,37 @@ export default function Index({ auth, sanctions, filters }) {
         setShowUpdateModal(true);
     };
 
+    const screens = useBreakpoint();
+    const isMobile = !screens.md;
+
     return (
         <AppLayout user={user} breadcrumbs={["Setup", "Sanctions"]}>
-            <div className="py-4 px-4">
+            <div style={{ padding: isMobile ? 12 : 24, maxWidth: 1200, margin: "0 auto" }}>
 
-                <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl p-6 shadow-lg mb-8">
-                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-5">
-                        <div>
-                            <h1 className="text-3xl font-bold tracking-tight">Setup Sanctions</h1>
-                            <p className="text-blue-100 mt-1">
-                                Configure and manage all events in one place.
-                            </p>
-                        </div>
+                {/* HEADER */}
+                <Card style={{ marginBottom: 16, borderRadius: 12 }}>
+                    <Row justify="space-between" align="middle">
+                        <Col>
+                            <Title level={isMobile ? 4 : 3} style={{ margin: 0 }}>
+                                Sanction Setup
+                            </Title>
+                            <Text type="secondary">
+                                Manage sanctions
+                            </Text>
+                        </Col>
 
-                        <button
-                            onClick={() => setShowCreateModal(true)}
-                            className="bg-white text-blue-700 hover:bg-blue-50 px-4 py-2 rounded-xl text-sm md:text-base font-semibold shadow-md flex items-center gap-2 transition-all duration-200">
-                            <PlusIcon className="h-5 w-5" />
-                            Create New
-                        </button>
-                    </div>
-                </div>
+                        <Col>
+                            <Button
+                                type="primary"
+                                icon={<PlusOutlined />}
+                                size={isMobile ? "middle" : "large"}
+                                onClick={() => setShowCreateModal(true)}
+                            >
+                                Create New
+                            </Button>
+                        </Col>
+                    </Row>
+                </Card>
 
                 <DataTable
                     columns={columns}
@@ -126,37 +143,48 @@ export default function Index({ auth, sanctions, filters }) {
                     searchPlaceholder="Search sanctions..."
                     actions={(row) => (
                         <div className="flex justify-end">
-                            <button
+                            <Button
                                 onClick={() => handleEdit(row)}
-                                className="text-blue-600 hover:underline text-sm"
                             >
                                 Update
-                            </button>
+                            </Button>
                         </div>
                     )}
                 />
             </div>
 
-            {/* Create Modal */}
             <Modal
-                isOpen={showCreateModal}
-                onClose={() => setShowCreateModal(false)}
                 title="Create Sanction"
+                open={showCreateModal}
+                onCancel={() => setShowCreateModal(false)}
+                footer={null}
+                destroyOnClose
             >
-                <Create auth={auth} onSuccess={handleSuccess} />
+                <Create
+                    auth={auth}
+                    onSuccess={() => {
+                        handleSuccess();
+                        setShowCreateModal(false);
+                    }}
+                />
             </Modal>
 
             {/* Update Modal */}
             <Modal
-                isOpen={showUpdateModal}
-                onClose={() => setShowUpdateModal(false)}
                 title="Update Sanction"
+                open={showUpdateModal}
+                onCancel={() => setShowUpdateModal(false)}
+                footer={null}
+                destroyOnClose
             >
                 {selectedSanction && (
                     <Update
                         auth={auth}
                         sanction={selectedSanction}
-                        onSuccess={handleSuccess}
+                        onSuccess={() => {
+                            handleSuccess();
+                            setShowUpdateModal(false);
+                        }}
                     />
                 )}
             </Modal>

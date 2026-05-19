@@ -1,202 +1,311 @@
-import { Link, usePage, router } from "@inertiajs/react";
-import { useState, useEffect } from "react";
+import React from "react";
+import { Link, usePage } from "@inertiajs/react";
+import { Layout, Menu, Drawer, Typography, theme, Grid } from "antd";
 import {
-    ChevronRightIcon,
-    ChevronLeftIcon,
-} from "@heroicons/react/24/outline";
+    DashboardOutlined,
+    SafetyCertificateOutlined,
+    StopOutlined,
+    EnvironmentOutlined,
+    CalendarOutlined,
+    UserOutlined,
+    FileTextOutlined,
+    BankOutlined,
+    HomeOutlined,
+    IdcardOutlined,
+    UnorderedListOutlined,
+    ClusterOutlined
+} from "@ant-design/icons";
 
-import {
-    LayoutDashboard,
-    ListTodo,
-    ListX,
-    MapPinned,
-    CalendarRange,
-    Users,
-    Tickets,
-    HomeIcon,
-    IdCard
-} from "lucide-react";
-
-import { Loader } from "lucide-react";
+const { Sider } = Layout;
+const { Text } = Typography;
+const { useToken } = theme;
+const { useBreakpoint } = Grid;
 
 export default function Sidebar({
     user,
     mobileOpen,
     setMobileOpen,
     collapsed,
-    setCollapsed
+    setCollapsed,
+    isDark
 }) {
-
     const { url } = usePage();
-    const [loadingHref, setLoadingHref] = useState(null);
+    const currentPath = url.split("?")[0];
+    const isActive = (key) => currentPath.startsWith(key);
 
-    const toggleCollapse = () => {
-        const newCollapsed = !collapsed;
-        setCollapsed(newCollapsed);
-        localStorage.setItem("sidebar-collapsed", newCollapsed);
-    };
+    const { token } = useToken();
+    const screens = useBreakpoint();
 
-    useEffect(() => {
-        const removeStart = router.on("start", (event) => {
-            setLoadingHref(event.detail.visit.url.pathname);
-        });
-
-        const removeFinish = router.on("finish", () => {
-            setLoadingHref(null);
-        });
-
-        return () => {
-            removeStart();
-            removeFinish();
-        };
-    }, []);
-
+    const isMobile = !screens.lg;
     const role = user?.user_role || "guest";
 
-    let links = [];
+    if (role === "security") return null;
 
-    if (role === "admin") {
-        links = [
-            {
-                label: "Menu",
-                items: [
-                    { name: "Dashboard", href: "/admin/dashboard", icon: LayoutDashboard },
-                ],
-            },
-            {
-                label: "Setup",
-                items: [
-                    { name: "Violation", href: "/setup-violation", icon: ListTodo },
-                    { name: "Sanction", href: "/setup-sanction", icon: ListX },
-                    { name: "Location", href: "/setup-location", icon: MapPinned },
-                ],
-            },
-            {
-                label: "Manage",
-                items: [
-                    { name: "Events", href: "/manage-event", icon: CalendarRange },
-                    { name: "Users", href: "/manage-user", icon: Users },
-                    { name: "Violation Records", href: "/manage-violation-records", icon: Tickets },
-                ],
-            },
-        ];
-    }
+    const getMenuItems = () => {
+        const items = [];
 
-    else if (role === 'student') {
-        links = [
-            {
-                label: 'Menu', items: [
-                    { name: 'Home', href: '/student/dashboard', icon: HomeIcon },
-                    { name: 'Digital ID', href: '/student/digital-id', icon: IdCard },
-                ],
-            },
-            { label: 'Records', items: [{ name: 'Violation', href: '/student/violations', icon: Tickets },], },
-        ];
-    } else if (role === 'security') {
-        links = [
-            { label: 'Menu', items: [{ name: 'Dashboard', href: '/security/dashboard', icon: LayoutDashboard },], },
-        ];
-    }
+        if (role === "admin") {
+            items.push(
+                {
+                    key: "grp1",
+                    label: (
+                        <span style={{
+                            fontSize: "10px",
+                            fontWeight: "600",
+                            color: "#6b7280",
+                            letterSpacing: "0.1em"
+                        }}>
+                            MENU
+                        </span>
+                    ),
+                    type: "group",
+                    children: [
+                        {
+                            key: "/admin/dashboard",
+                            icon: <DashboardOutlined />,
+                            label: <Link href="/admin/dashboard">Dashboard</Link>
+                        }
+                    ]
+                },
+                {
+                    key: "grp2",
+                    label: (
+                        <span style={{
+                            fontSize: "10px",
+                            fontWeight: "600",
+                            color: "#6b7280",
+                            letterSpacing: "0.1em"
+                        }}>
+                            SETUP
+                        </span>
+                    ),
+                    type: "group",
+                    children: [
+                        {
+                            key: "/setup-violation",
+                            icon: <SafetyCertificateOutlined />,
+                            label: <Link href="/setup-violation">Violation</Link>
+                        },
+                        {
+                            key: "/setup-sanction",
+                            icon: <StopOutlined />,
+                            label: <Link href="/setup-sanction">Sanction</Link>
+                        },
+                        {
+                            key: "/setup-location",
+                            icon: <EnvironmentOutlined />,
+                            label: <Link href="/setup-location">Location</Link>
+                        }
+                    ]
+                },
+                {
+                    key: "grp3",
+                    label: (
+                        <span style={{
+                            fontSize: "10px",
+                            fontWeight: "600",
+                            color: "#6b7280",
+                            letterSpacing: "0.1em"
+                        }}>
+                            MANAGE
+                        </span>
+                    ),
+                    type: "group",
+                    children: [
+                        {
+                            key: "/manage-event",
+                            icon: <CalendarOutlined />,
+                            label: <Link href="/manage-event">Events</Link>
+                        },
+                        {
+                            key: "/manage-user",
+                            icon: <UserOutlined />,
+                            label: <Link href="/manage-user">Users</Link>
+                        },
+                        {
+                            key: "/manage-violation-records",
+                            icon: <FileTextOutlined />,
+                            label: <Link href="/manage-violation-records">Records</Link>
+                        },
+                        {
+                            key: "/manage-clubs",
+                            icon: <BankOutlined />,
+                            label: <Link href="/manage-clubs">Clubs</Link>
+                        },
+                        // {
+                        //     key: "/manage-office",
+                        //     icon: <ClusterOutlined />,
+                        //     label: <Link href="/manage-offices">Offices</Link>
+                        // },
+                        // {
+                        //     key: "/manage-eclearance",
+                        //     icon: <UnorderedListOutlined />,
+                        //     label: <Link href="/manage-eclearance">e-Clearance</Link>
+                        // }
+                    ]
+                }
+            );
+        } else if (role === "student") {
+            items.push({
+                key: "grp1",
+                type: "group",
+                children: [
+                    {
+                        key: "/student/dashboard",
+                        icon: <HomeOutlined />,
+                        label: <Link href="/student/dashboard">Home</Link>
+                    },
+                    {
+                        key: "/student/digital-id",
+                        icon: <IdcardOutlined />,
+                        label: <Link href="/student/digital-id">Digital ID</Link>
+                    },
+                    {
+                        key: "/student/my-clubs",
+                        icon: <ClusterOutlined />,
+                        label: <Link href="/student/my-clubs">My Clubs</Link>
+                    },
+                    {
+                        key: "/student/violations",
+                        icon: <FileTextOutlined />,
+                        label: <Link href="/student/violations">Violations</Link>
+                    },
+                     {
+                        key: "/events",
+                        icon: <CalendarOutlined />,
+                        label: <Link href="/events">Events</Link>
+                    },
 
-    const sidebarWidth = collapsed ? "w-20" : "w-64";
+                ]
+            });
+        } else if (role === "guidance_counselor") {
+            items.push({
+                key: "grp1",
+                type: "group",
+                children: [
+                    {
+                        key: "/guidance/dashboard",
+                        icon: <HomeOutlined />,
+                        label: <Link href="/guidance/dashboard">Home</Link>
+                    },
+                    {
+                        key: "/events",
+                        icon: <CalendarOutlined />,
+                        label: <Link href="/events">Events</Link>
+                    },
+                ]
+            });
+        }
+
+        return items;
+    };
+
+    const LogoSection = (
+        <div
+            style={{
+                height: 64,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: collapsed ? "center" : "flex-start",
+                padding: collapsed ? 0 : "0 16px",
+                borderBottom: `1px solid ${token.colorBorder}`
+            }}
+        >
+            <img
+                src={
+                    isDark
+                        ? "/../assets/images/darkMode-csdl-logo.png"
+                        : "/../assets/images/defaultMode-csdl-logo.png"
+                }
+                alt="logo"
+                style={{
+                    height: 35,
+                    marginRight: collapsed ? 0 : 12
+                }}
+            />
+            {!collapsed && (
+                <span
+                    className={`font-bold leading-tight sm:text-[7px] text-[9px]`}
+                    style={{ color: token.colorText }}
+                >
+                    CENTER FOR STUDENT DEVELOPMENT & LEADERSHIP
+                    <br />
+                    <span className="text-[9px] font-light opacity-70">
+                        Opol Community College
+                    </span>
+                </span>
+            )}
+        </div>
+    );
+
+    const SidebarContent = (
+        <>
+            {LogoSection}
+            <Menu
+                theme={isDark ? "dark" : "light"}
+                mode="inline"
+                selectedKeys={
+                    getMenuItems()
+                        .flatMap(group => group.children || [])
+                        .filter(item => isActive(item.key))
+                        .map(item => item.key)
+                }
+                items={getMenuItems()}
+            />
+        </>
+    );
 
     return (
         <>
-            {/* MOBILE OVERLAY */}
-            {mobileOpen && (
-                <div
-                    className="fixed inset-0 bg-black/50 z-30 lg:hidden"
-                    onClick={() => setMobileOpen(false)}
-                />
+            {!isMobile && (
+                <Sider
+                    collapsible
+                    collapsed={collapsed}
+                    onCollapse={(val) => setCollapsed(val)}
+                    collapsedWidth={80}
+                    trigger={null}
+                    theme={isDark ? "dark" : "light"}
+                    width={200}
+                    style={{
+                        position: "fixed",
+                        left: 0,
+                        top: 0,
+                        bottom: 0,
+                        zIndex: 1000,
+                        borderRight: `1px solid ${token.colorBorder}`
+                    }}
+                >
+                    {SidebarContent}
+                </Sider>
             )}
 
-            <aside
-                className={`
-                fixed top-0 left-0 z-40 h-screen bg-white border-r
-                transition-all duration-300
-                ${sidebarWidth}
-                ${mobileOpen ? "translate-x-0" : "-translate-x-full"}
-                lg:translate-x-0
-                flex flex-col
-                `}
-            >
-
-                {/* HEADER */}
-                <div
-                    className={`flex items-center p-4 ${collapsed ? "justify-center" : "justify-between"
-                        }`}
+            {isMobile && (
+                <Drawer
+                    placement="left"
+                    open={mobileOpen}
+                    onClose={() => setMobileOpen(false)}
+                    width={240}
+                    closable={false}
+                    styles={{
+                        body: {
+                            padding: 0,
+                            background: isDark ? "#001529" : "#ffffff",
+                        },
+                        content: {
+                            background: isDark ? "#001529" : "#ffffff",
+                        },
+                    }}
                 >
-                    {!collapsed && (
-                        <Link href="/" className="flex items-center gap-2">
-                            <img src="/favicon.png" className="w-6 h-6" />
-                            <span className="font-bold text-blue-700">myOCC</span>
-                        </Link>
-                    )}
-
-                    <button
-                        onClick={toggleCollapse}
-                        className="p-1 rounded hover:bg-gray-200"
+                    <div
+                        style={{
+                            height: "100%",
+                            color: isDark ? "#fff" : "inherit",
+                        }}
                     >
-                        {collapsed ? (
-                            <ChevronRightIcon className="h-5 w-5" />
-                        ) : (
-                            <ChevronLeftIcon className="h-5 w-5" />
-                        )}
-                    </button>
-                </div>
-
-                {/* LINKS */}
-                <nav className="flex-1 overflow-y-auto mt-4">
-
-                    {links.map((group) => (
-                        <div key={group.label} className="mb-4">
-
-                            {!collapsed && (
-                                <p className="px-4 text-xs text-gray-400 uppercase mb-2">
-                                    {group.label}
-                                </p>
-                            )}
-
-                            {group.items.map((link) => {
-
-                                const Icon = link.icon;
-                                const isActive = url.startsWith(link.href);
-                                const isLoading = loadingHref === link.href;
-
-                                return (
-                                    <Link
-                                        key={link.href}
-                                        href={link.href}
-                                        onClick={() => {
-                                            setMobileOpen(false);
-                                            setLoadingHref(link.href);
-                                        }}
-                                        className={`
-                                        flex items-center rounded-lg mx-3 my-1 transition
-                                        ${collapsed ? "justify-center py-3" : "px-4 py-3"}
-                                        ${isActive
-                                                ? "bg-blue-700 text-white"
-                                                : "hover:bg-blue-100 text-gray-700"
-                                            }
-                                        `}
-                                    >
-                                        {isLoading ? (
-                                            <Loader className="w-5 h-5 animate-spin" />
-                                        ) : (
-                                            <Icon className="w-5 h-5" />
-                                        )}
-
-                                        {!collapsed && (
-                                            <span className="ml-3">{link.name}</span>
-                                        )}
-                                    </Link>
-                                );
-                            })}
-                        </div>
-                    ))}
-
-                </nav>
-            </aside>
+                        {SidebarContent}
+                    </div>
+                </Drawer>
+            )}
         </>
     );
 }

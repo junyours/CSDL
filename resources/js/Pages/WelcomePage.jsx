@@ -1,217 +1,314 @@
-import { Link } from "@inertiajs/react";
-import { ArrowRightIcon, CloudDownloadIcon, SparklesIcon, User } from "lucide-react";
-import React, { useEffect, useState } from "react";
+import React from "react";
 import { usePage } from "@inertiajs/react";
+import {
+    Layout,
+    Typography,
+    Row,
+    Col,
+    ConfigProvider,
+    Grid,
+    theme,
+} from "antd";
+
+import { useTheme } from "../ThemeContext";
+import Login from "./Auth/Login";
+
+const { Header, Content } = Layout;
+const { Title } = Typography;
+const { useBreakpoint } = Grid;
 
 export default function WelcomePage() {
+    const { isDark } = useTheme();
     const { apkInfo } = usePage().props;
-    const { apkUrl, version } = apkInfo;
-    const [activeSection, setActiveSection] = useState("home");
 
-    useEffect(() => {
-        const handleScroll = () => {
-            const sections = ["home", "features", "about", "faq"];
+    const screens = useBreakpoint();
 
-            for (let section of sections) {
-                const element = document.getElementById(section);
-                if (element) {
-                    const rect = element.getBoundingClientRect();
-                    if (rect.top <= 150 && rect.bottom >= 150) {
-                        setActiveSection(section);
-                    }
-                }
-            }
-        };
-
-        window.addEventListener("scroll", handleScroll);
-        return () => window.removeEventListener("scroll", handleScroll);
-    }, []);
+    /**
+     * MOBILE ONLY = BELOW 768px
+     * TABLET = 768px - 1023px
+     * DESKTOP = 1024px+
+     */
+    const isMobile = !screens.md;
+    const isTablet = screens.md && !screens.lg;
+    const isDesktop = screens.lg;
 
     return (
-        <div className="relative min-h-screen flex flex-col overflow-x-hidden bg-gradient-to-br from-sky-500 via-blue-600 to-indigo-700 text-white">
+        <ConfigProvider
+            theme={{
+                algorithm: isDark
+                    ? theme.darkAlgorithm
+                    : theme.defaultAlgorithm,
+                token: {
+                    colorPrimary: "#1877f2",
+                    borderRadius: 20,
+                    fontFamily:
+                        "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+                },
+            }}
+        >
+            <AppContent
+                isDark={isDark}
+                isMobile={isMobile}
+                isTablet={isTablet}
+                isDesktop={isDesktop}
+            />
+        </ConfigProvider>
+    );
+}
 
-            {/* Decorative blurred gradients */}
-            <div className="pointer-events-none absolute -top-32 left-0 h-96 w-96 -translate-x-1/2 rounded-full bg-cyan-400/40 blur-3xl" />
-            <div className="pointer-events-none absolute top-1/3 right-0 h-[28rem] w-[28rem] translate-x-1/2 rounded-full bg-indigo-400/40 blur-3xl" />
+function AppContent({
+    isDark,
+    isMobile,
+    isTablet,
+    isDesktop,
+}) {
+    const logoSrc = isDark
+        ? "./assets/images/darkMode-csdl-logo.png"
+        : "./assets/images/defaultMode-csdl-logo.png";
 
-            {/* Header */}
-            <header className="relative z-10">
-                <div className="mx-auto max-w-7xl px-6 py-8">
-                    <nav className="flex items-center justify-between">
-                        <div className="flex items-center gap-3 text-2xl font-extrabold tracking-tight">
-                            <img
-                                src="/assets/images/favicon.png"
-                                alt="App Preview"
-                                className="h-7 w-7"
-                            />
-                            <span>myOCC</span>
-                        </div>
-                        <ul className="hidden items-center gap-10 md:flex text-base font-medium opacity-90">
-                            <li>
-                                <a
-                                    href="#home"
-                                    className={`transition ${activeSection === "home"
-                                        ? "text-cyan-300 border-b-2 border-cyan-300"
-                                        : "opacity-80 hover:opacity-100"
-                                        }`}
-                                >
-                                    Home
-                                </a>
-                            </li>
+    return (
+        <Layout
+            style={{
+                minHeight: "100vh",
+                background: isDark ? "#111827" : "#f5f5f5",
+            }}
+        >
+            {/* MOBILE HEADER */}
+            {isMobile && (
+                <Header
+                    style={{
+                        background: "transparent",
+                        display: "flex",
+                        justifyContent: "center",
+                        alignItems: "center",
+                        padding: "18px 16px",
+                        height: "auto",
+                    }}
+                >
+                    <img
+                        src={logoSrc}
+                        alt="Logo"
+                        style={{
+                            height: 40,
+                            objectFit: "contain",
+                        }}
+                    />
+                </Header>
+            )}
 
-                            <li>
-                                <a
-                                    href="#features"
-                                    className={`transition ${activeSection === "features"
-                                        ? "text-cyan-300 border-b-2 border-cyan-300"
-                                        : "opacity-80 hover:opacity-100"
-                                        }`}
-                                >
-                                    Features
-                                </a>
-                            </li>
-
-                            <li>
-                                <a
-                                    href="#about"
-                                    className={`transition ${activeSection === "about"
-                                        ? "text-cyan-300 border-b-2 border-cyan-300"
-                                        : "opacity-80 hover:opacity-100"
-                                        }`}
-                                >
-                                    About
-                                </a>
-                            </li>
-
-                            <li>
-                                <a
-                                    href="#faq"
-                                    className={`transition ${activeSection === "faq"
-                                        ? "text-cyan-300 border-b-2 border-cyan-300"
-                                        : "opacity-80 hover:opacity-100"
-                                        }`}
-                                >
-                                    FAQ
-                                </a>
-                            </li>
-
-                        </ul>
-                        <Link
-                            href="/login"
-                            className="
-    flex items-center justify-center
-    h-10 w-10
-    rounded-full
-    bg-white/15
-    backdrop-blur-md
-    transition
-    hover:bg-white/25
-    focus:outline-none
-    focus:ring-2 focus:ring-cyan-300/50
-  "
-                            aria-label="Login"
+            <Content
+                style={{
+                    flex: 1,
+                    width: "100%",
+                }}
+            >
+                {/* MOBILE */}
+                {isMobile ? (
+                    <div
+                        style={{
+                            minHeight: "calc(100vh - 80px)",
+                            display: "flex",
+                            justifyContent: "center",
+                            alignItems: "center",
+                            padding: "24px 16px",
+                        }}
+                    >
+                        <div
+                            style={{
+                                width: "100%",
+                                maxWidth: 420,
+                            }}
                         >
-                            <User className="h-6 w-6 text-white" />
-                        </Link>
-
-                    </nav>
-                </div>
-            </header>
-
-            {/* Hero Section */}
-            <main id="home" className="relative z-10 overflow-hidden flex-1">
-                <div className="mx-auto grid max-w-7xl grid-cols-1 items-center gap-12 px-6 py-20 md:grid-cols-2">
-
-                    {/* Left Content */}
-                    <div className="flex flex-col items-center text-center md:items-start md:text-left">
-
-                        {/* Badge */}
-                        <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-1.5 text-sm font-medium backdrop-blur-md">
-                            <SparklesIcon className="h-4 w-4 text-cyan-300" />
-                            Your all-in-one campus app
-                        </span>
-
-                        {/* Heading */}
-                        <h1 className="mt-6 max-w-xl text-4xl font-extrabold leading-tight md:text-5xl">
-                            Keep your records
-                            <span className="block bg-gradient-to-r from-cyan-300 to-white bg-clip-text text-transparent">
-                                smarter & faster
-                            </span>
-                        </h1>
-
-                        {/* Description */}
-                        <p className="mt-5 max-w-xl text-base text-white/80 md:text-lg">
-                            Track attendance, manage violation records, and monitor campus activity
-                            seamlessly with smart face recognition.
-                        </p>
-
-                        {/* Buttons */}
-                        <div className="mt-10 flex w-full flex-col gap-4 sm:w-auto sm:flex-row">
-                            <Link
-                                href="/register"
-                                className="group inline-flex items-center justify-center gap-3 rounded-full
-    bg-cyan-400 px-7 py-3 text-base font-semibold text-slate-900
-    transition hover:bg-cyan-300"
-                            >
-                                Get Started
-                                <ArrowRightIcon className="h-5 w-5 transition-transform group-hover:translate-x-1" />
-                            </Link>
-
-
-                            {/* <a
-                                href={apkUrl}
-                                download
-                                className="inline-flex items-center justify-center gap-3 rounded-full
-    border border-white/30 bg-white/5 px-7 py-3 text-base font-semibold
-    backdrop-blur-md transition hover:bg-white/15"
-                            >
-                                <CloudDownloadIcon className="h-5 w-5" />
-                                Download App {version}
-                            </a> */}
-
-
+                            <Login />
                         </div>
                     </div>
+                ) : (
+                    /* TABLET + DESKTOP */
+                    <Row
+                        style={{
+                            minHeight: "100vh",
+                            margin: 0,
+                            flexWrap: "nowrap",
+                        }}
+                    >
+                        {/* LEFT SIDE */}
+                        <Col
+                            md={14}
+                            lg={14}
+                            style={{
+                                background: isDark
+                                    ? "#0f172a"
+                                    : "#f3f4f6",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                position: "relative",
+                                overflow: "hidden",
 
-                    {/* Right Visual */}
-                    <div className="relative flex justify-center md:justify-end">
+                                /**
+                                 * RESPONSIVE PADDING
+                                 */
+                                padding: isDesktop
+                                    ? "80px 72px"
+                                    : "48px 28px",
+                            }}
+                        >
+                            <div
+                                style={{
+                                    width: "100%",
+                                    maxWidth: isDesktop
+                                        ? 980
+                                        : 760,
+                                }}
+                            >
+                                {/* LOGO */}
+                                <img
+                                    src={logoSrc}
+                                    alt="Logo"
+                                    style={{
+                                        width: isDesktop ? 70 : 54,
+                                        marginBottom: isDesktop
+                                            ? 2
+                                            : 0,
+                                    }}
+                                />
 
-                        {/* Glow */}
-                        <div className="pointer-events-none absolute -bottom-20 right-1/2 h-72 w-72 translate-x-1/2 rounded-full bg-cyan-300/30 blur-3xl md:h-96 md:w-96 md:right-24 md:translate-x-0" />
+                                {/* CONTENT */}
+                                <div
+                                    style={{
+                                        display: "flex",
+                                        alignItems: "center",
 
-                        {/* Image */}
-                        <img
-                            src="/assets/images/hand-holding-phone.png"
-                            alt="Mobile App Preview"
-                            className="
-    relative z-10
-    w-44 sm:w-56 md:w-72 lg:w-[450px]
-    drop-shadow-[0_40px_80px_rgba(0,0,0,0.45)]
-    transition-transform duration-500 hover:scale-105
-  "
-                        />
+                                        /**
+                                         * SMALLER GAP ON TABLET
+                                         */
+                                        gap: isDesktop ? 6 : 6,
+                                    }}
+                                >
+                                    {/* TEXT */}
+                                    <div
+                                        style={{
+                                            flex: isDesktop
+                                                ? 1
+                                                : 1,
+                                        }}
+                                    >
+                                        <Title
+                                            style={{
+                                                margin: 0,
+                                                fontWeight: 400,
+                                                lineHeight: 0.95,
 
-                    </div>
+                                                /**
+                                                 * RESPONSIVE TEXT
+                                                 */
+                                                fontSize: isDesktop
+                                                    ? 55
+                                                    : 40,
 
-                </div>
-            </main>
+                                                letterSpacing: isDesktop
+                                                    ? "-3px"
+                                                    : "-1.5px",
 
-            {/* Footer */}
-            <footer className="relative z-10 border-t border-white/10 bg-white/5 backdrop-blur-md">
-                <div className="mx-auto max-w-7xl px-6 py-8 md:py-10 flex flex-col md:flex-row items-center justify-between text-sm text-white/80">
+                                                color: isDark
+                                                    ? "#ffffff"
+                                                    : "#111111",
+                                            }}
+                                        >
+                                            Records made
+                                            <br />
+                                            <span
+                                                style={{
+                                                    color: "#1877f2",
+                                                }}
+                                            >
+                                                secure & centralized
+                                            </span>
+                                        </Title>
+                                    </div>
 
-                    {/* Left: Copyright */}
-                    <span>© 2025 myOCC</span>
+                                    {/* HERO IMAGE */}
+                                    <div
+                                        style={{
+                                            flex: isDesktop
+                                                ? 1.5
+                                                : 1.25,
 
-                    {/* Right: Optional links */}
-                    <div className="mt-4 md:mt-0 flex gap-4">
-                        <a href="/#" className="hover:text-cyan-300 transition">Privacy Policy</a>
-                        <a href="/#" className="hover:text-cyan-300 transition">Terms of Service</a>
-                        <a href="/#" className="hover:text-cyan-300 transition">Contact</a>
-                    </div>
-                </div>
-            </footer>
+                                            display: "flex",
+                                            justifyContent: "center",
+                                            alignItems: "center",
+                                        }}
+                                    >
+                                        <img
+                                            src="./assets/images/f1fb76d6-2a18-47e9-83ee-dec47527cafb.png"
+                                            alt="Hero"
+                                            style={{
+                                                width: "100%",
 
-        </div>
+                                                /**
+                                                 * BIGGER ON DESKTOP
+                                                 * CONTROLLED ON TABLET
+                                                 */
+                                                maxWidth: isDesktop
+                                                    ? 760
+                                                    : 500,
+
+                                                objectFit: "contain",
+                                                display: "block",
+
+                                                /**
+                                                 * RESPONSIVE SCALE
+                                                 */
+                                                transform: isDesktop
+                                                    ? "scale(1.28)"
+                                                    : "scale(1.05)",
+                                            }}
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        </Col>
+
+                        {/* RIGHT SIDE */}
+                        <Col
+                            md={10}
+                            lg={10}
+                            style={{
+                                background: isDark
+                                    ? "#111827"
+                                    : "#ffffff",
+
+                                display: "flex",
+                                justifyContent: "center",
+                                alignItems: "center",
+
+                                padding: isDesktop
+                                    ? "40px"
+                                    : "24px",
+
+                                borderLeft: isDark
+                                    ? "1px solid rgba(255,255,255,0.08)"
+                                    : "1px solid #e5e7eb",
+                            }}
+                        >
+                            <div
+                                style={{
+                                    width: "100%",
+
+                                    /**
+                                     * SMALLER LOGIN WIDTH ON TABLET
+                                     */
+                                    maxWidth: isDesktop
+                                        ? 440
+                                        : 360,
+                                }}
+                            >
+                                <Login />
+                            </div>
+                        </Col>
+                    </Row>
+                )}
+            </Content>
+        </Layout>
     );
 }

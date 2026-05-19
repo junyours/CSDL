@@ -4,10 +4,62 @@
 
 /* Your custom animations */
 @keyframes fadein {
-  from { opacity: 0; transform: translateY(-5px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(-5px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .animate-fadein {
   animation: fadein 0.15s ease-out;
+}
+
+.avatar-spinner {
+  display: inline-flex;
+  padding: 2px;
+  border-radius: 50%;
+  background: conic-gradient(from 0deg,
+      #1890ff,
+      #52c41a,
+      #faad14,
+      #ff4d4f,
+      #1890ff);
+  animation: spinBorder 1s linear infinite;
+}
+
+@keyframes spinBorder {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* keep avatar clean inside */
+.avatar-spinner .ant-avatar {
+  background: white;
+  border-radius: 50%;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Hide scrollbar but keep scrolling */
+.hide-scrollbar {
+  -ms-overflow-style: none;  /* IE & Edge */
+  scrollbar-width: none;     /* Firefox */
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;             /* Chrome, Safari */
 }

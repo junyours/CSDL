@@ -1,34 +1,65 @@
-import { useState, useEffect, useRef } from "react";
-import { PlusIcon, EllipsisVerticalIcon, TrashIcon } from "@heroicons/react/20/solid";
+import { useState, useEffect } from "react";
 import AppLayout from "../../../Layouts/AppLayout";
 import Map from "../../../Components/Map";
 import Create from "./Create";
 import axios from "axios";
-import toast from "react-hot-toast";
-import { Menu } from "@headlessui/react";
+
+import {
+    Button,
+    Card,
+    Col,
+    Grid,
+    Row,
+    Typography,
+    List,
+    Dropdown,
+    Menu,
+    Modal,
+    message,
+    Empty,
+} from "antd";
+
+import {
+    PlusOutlined,
+    MoreOutlined,
+    DeleteOutlined,
+    ExclamationCircleOutlined,
+} from "@ant-design/icons";
+import { theme } from "antd";
+import { useTheme } from "../../../ThemeContext";
+
+const { useToken } = theme;
+const { Title, Text } = Typography;
+const { useBreakpoint } = Grid;
+const { confirm } = Modal;
 
 export default function Index({ auth, locations: serverLocations }) {
     const user = auth?.user;
+
     const [locations, setLocations] = useState(serverLocations || []);
     const [selectedPolygon, setSelectedPolygon] = useState(null);
     const [selectedLocationId, setSelectedLocationId] = useState(null);
     const [showCreate, setShowCreate] = useState(false);
-    const locationsRef = useRef([]);
 
+    const screens = useBreakpoint();
+    const isMobile = !screens.md;
+
+    const { token } = useToken();
+
+    // detect dark mode
+    const { isDark, toggleTheme } = useTheme();
+    const mapTheme = isDark ? "dark" : "light";
+
+    // Initialize selection
     useEffect(() => {
-        const selectFirst = () => {
-            if (locations.length > 0) {
-                const first = locations[0];
-                setSelectedPolygon(first.polygon_points);
-                setSelectedLocationId(first.id);
-            } else {
-                setSelectedPolygon(null);
-                setSelectedLocationId(null);
-            }
-        };
-        selectFirst();
-        window.addEventListener("focus", selectFirst);
-        return () => window.removeEventListener("focus", selectFirst);
+        if (locations.length > 0) {
+            const first = locations[0];
+            setSelectedLocationId(first.id);
+            setSelectedPolygon(first.polygon_points);
+        } else {
+            setSelectedLocationId(null);
+            setSelectedPolygon(null);
+        }
     }, [locations]);
 
     const handleCreated = (newLocation) => {
@@ -38,120 +69,191 @@ export default function Index({ auth, locations: serverLocations }) {
         setShowCreate(false);
     };
 
-    const moveToBin = async (id) => {
-        const promise = axios.patch(`/setup/location/${id}/move-to-bin`);
-        toast.promise(promise, {
-            loading: "Moving to bin...",
-            success: "Location moved to bin!",
-            error: "Failed to move location",
-        });
+    const moveToBin = (id) => {
+        confirm({
+            title: "Move this location to bin?",
+            icon: <ExclamationCircleOutlined />,
+            content: "This action cannot be undone.",
+            okText: "Yes, move",
+            okType: "danger",
+            cancelText: "Cancel",
+            onOk: async () => {
+                try {
+                    await axios.patch(`/setup/location/${id}/move-to-bin`);
 
-        try {
-            await promise;
+                    message.success("Location moved to bin");
 
-            // Remove the moved location from the active list
-            setLocations((prev) => prev.filter((loc) => loc.id !== id));
+                    const updated = locations.filter((loc) => loc.id !== id);
+                    setLocations(updated);
 
-            // If the removed location was selected, reset selection
-            if (selectedLocationId === id) {
-                if (locations.length > 1) {
-                    const first = locations.find((loc) => loc.id !== id);
-                    setSelectedLocationId(first.id);
-                    setSelectedPolygon(first.polygon_points);
-                } else {
-                    setSelectedLocationId(null);
-                    setSelectedPolygon(null);
+                    // Reset selection if needed
+                    if (selectedLocationId === id) {
+                        if (updated.length > 0) {
+                            setSelectedLocationId(updated[0].id);
+                            setSelectedPolygon(updated[0].polygon_points);
+                        } else {
+                            setSelectedLocationId(null);
+                            setSelectedPolygon(null);
+                        }
+                    }
+
+                } catch (error) {
+                    message.error("Failed to move location");
+                    console.error(error);
                 }
-            }
-
-        } catch (err) {
-            console.error(err);
-        }
+            },
+        });
     };
 
+    const getMenuItems = (loc) => [
+        {
+            key: "delete",
+            label: "Move to bin",
+            icon: <DeleteOutlined />,
+            danger: true,
+            onClick: () => moveToBin(loc.id),
+        },
+    ];
 
     return (
         <AppLayout user={user} breadcrumbs={["Setup", "Locations"]}>
-            <div className="py-4 px-4">
-                <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl p-6 shadow-lg mb-8">
-                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-5">
-                        <div>
-                            <h1 className="text-3xl font-bold tracking-tight">Setup Locations</h1>
-                            <p className="text-blue-100 mt-1">
-                                Configure and manage all locations.
-                            </p>
-                        </div>
+            <div style={{ padding: isMobile ? 12 : 24, maxWidth: 1200, margin: "0 auto" }}>
 
-                        <button
-                            onClick={() => setShowCreate(true)}
-                            className="bg-white text-blue-700 hover:bg-blue-50 px-4 py-2 rounded-xl text-sm md:text-base font-semibold shadow-md flex items-center gap-2 transition-all duration-200">
-                            <PlusIcon className="h-5 w-5" />
-                            Create New
-                        </button>
-                    </div>
-                </div>
+                {/* HEADER */}
+                <Card style={{ marginBottom: 16, borderRadius: 12 }}>
+                    <Row justify="space-between" align="middle">
+                        <Col>
+                            <Title level={isMobile ? 4 : 3} style={{ margin: 0 }}>
+                                Setup Locations
+                            </Title>
+                            <Text type="secondary">
+                                Configure and manage all locations
+                            </Text>
+                        </Col>
 
-                {/* Main Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:h-[60vh]">
-                    {/* Locations List */}
-                    <div className="border rounded p-4 space-y-2 overflow-y-auto">
-                        {locations.length === 0 && <p className="text-gray-400 text-sm">No locations found.</p>}
-                        {locations.map((loc, idx) => (
-                            <div
-                                key={loc.id}
-                                ref={(el) => (locationsRef.current[idx] = el)}
-                                className={`w-full p-3 rounded transition flex items-center justify-between gap-2
-                                ${selectedLocationId === loc.id ? "bg-blue-200 border-l-4 border-blue-600" : "hover:bg-gray-300"}`}
+                        <Col>
+                            <Button
+                                type="primary"
+                                icon={<PlusOutlined />}
+                                size={isMobile ? "middle" : "large"}
+                                onClick={() => setShowCreate(true)}
                             >
-                                <div
-                                    className="flex flex-col flex-1 text-left cursor-pointer"
-                                    onClick={() => {
-                                        setSelectedPolygon(loc.polygon_points);
-                                        setSelectedLocationId(loc.id);
+                                Create New
+                            </Button>
+                        </Col>
+                    </Row>
+                </Card>
+
+                {/* MAIN CONTENT */}
+                <Row gutter={16}>
+                    {/* LOCATION LIST */}
+                    <Col xs={24} md={8}>
+                        <Card
+                            title="Locations"
+                            style={{ height: "60vh" }}
+                            bodyStyle={{
+                                padding: 12,
+                                height: "100%",
+                                overflowY: "auto",
+                            }}
+                        >
+                            {locations.length === 0 ? (
+                                <Empty description="No locations found" />
+                            ) : (
+                                <List
+                                    dataSource={locations}
+                                    split={false}
+                                    renderItem={(loc) => {
+                                        const isActive = selectedLocationId === loc.id;
+
+                                        return (
+                                            <List.Item
+                                                onClick={() => {
+                                                    setSelectedLocationId(loc.id);
+                                                    setSelectedPolygon(loc.polygon_points);
+                                                }}
+                                                style={{
+                                                    cursor: "pointer",
+                                                    borderRadius: token.borderRadiusLG,
+                                                    marginBottom: 8,
+                                                    padding: 12,
+                                                    transition: "all 0.2s ease",
+
+
+                                                    border: isActive
+                                                        ? `1px solid ${token.colorPrimaryBorder}`
+                                                        : `1px solid transparent`,
+
+                                                    // optional accent line (very common in Ant Design patterns)
+                                                    borderLeft: isActive
+                                                        ? `4px solid ${token.colorPrimary}`
+                                                        : `4px solid transparent`,
+                                                }}
+                                                className="location-item"
+                                                actions={[
+                                                    <Dropdown
+                                                        menu={{ items: getMenuItems(loc) }}
+                                                        trigger={["click"]}
+                                                    >
+                                                        <Button
+                                                            type="text"
+                                                            icon={<MoreOutlined />}
+                                                            onClick={(e) => e.stopPropagation()}
+                                                        />
+                                                    </Dropdown>,
+                                                ]}
+                                            >
+                                                <List.Item.Meta
+                                                    title={
+                                                        <Text strong={isActive}>
+                                                            {loc.location_name}
+                                                        </Text>
+                                                    }
+                                                    description={
+                                                        <Text type="secondary">
+                                                            {loc.address}
+                                                        </Text>
+                                                    }
+                                                />
+                                            </List.Item>
+                                        );
                                     }}
-                                >
-                                    <div className="font-medium text-gray-800">{loc.location_name}</div>
-                                    <div className="text-xs text-gray-500">{loc.address}</div>
-                                </div>
+                                />
+                            )}
+                        </Card>
+                    </Col>
 
-                                {/* Three-dot menu */}
-                                <Menu as="div" className="relative">
-                                    <Menu.Button className="p-1 rounded hover:bg-gray-100">
-                                        <EllipsisVerticalIcon className="h-5 w-5 text-gray-600" />
-                                    </Menu.Button>
+                    {/* MAP */}
+                    <Col xs={24} md={16}>
+                        <Card
+                            title="Map View"
+                            style={{ height: "60vh" }}
+                            bodyStyle={{ padding: 0, height: "100%" }}
+                        >
+                            <Map
+                                center={[-73.935242, 40.73061]}
+                                zoom={12}
+                                polygon={selectedPolygon}
+                                theme={mapTheme}
+                            />
+                        </Card>
+                    </Col>
+                </Row>
 
-                                    <Menu.Items className="absolute right-0 mt-2 w-56 bg-white border rounded shadow-md z-50">
-                                        <Menu.Item>
-                                            {({ active }) => (
-                                                <button
-                                                    onClick={() => moveToBin(loc.id)}
-                                                    className={`w-full text-left px-4 py-2 flex items-center gap-2 ${active ? "bg-gray-100" : ""
-                                                        }`}
-                                                >
-                                                    <TrashIcon className="h-5 w-5 text-red-600" />
-                                                    <div className="flex flex-col justify-center">
-                                                        <span className="text-sm font-medium text-gray-700">Move to bin</span>
-                                                        <p className="text-xs text-gray-500">
-                                                            This action cannot be undone.
-                                                        </p>
-                                                    </div>
-                                                </button>
-                                            )}
-                                        </Menu.Item>
-                                    </Menu.Items>
-                                </Menu>
-                            </div>
-                        ))}
-                    </div>
+                {/* CREATE MODAL */}
+                <Modal
+                    title="Create Location"
+                    open={showCreate}
+                    onCancel={() => setShowCreate(false)}
+                    footer={null}
+                    destroyOnClose
+                >
+                    <Create
+                        onClose={() => setShowCreate(false)}
+                        onCreated={handleCreated}
+                    />
+                </Modal>
 
-                    {/* Map */}
-                    <div className="md:col-span-2 border rounded overflow-hidden flex flex-col h-full">
-                        <Map center={[-73.935242, 40.73061]} zoom={12} polygon={selectedPolygon} className="flex-1 w-full" />
-                    </div>
-                </div>
-
-                {/* Slide-in Create Form */}
-                {showCreate && <Create onClose={() => setShowCreate(false)} onCreated={handleCreated} />}
             </div>
         </AppLayout>
     );

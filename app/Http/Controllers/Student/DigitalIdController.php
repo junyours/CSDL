@@ -10,24 +10,28 @@ use Illuminate\Http\Request;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
+use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Cache;
 
 class DigitalIDController extends Controller
 {
+
     public function index(SisApiService $sisApi)
     {
         $user = auth()->user();
         $studentData = null;
         $userInfoData = null;
-        $userCreatedAt = $user->created_at ? $user->created_at->format('Y-m-d') : null;
+
+        $userCreatedAt = $user->created_at
+            ? $user->created_at->format('Y-m-d')
+            : null;
 
         if ($user->user_role === 'student') {
-
             $studentData = $this->fetchStudentData($user->user_id_no, $sisApi);
-
         } else {
-
             $userInfoData = UserInformation::where('user_id_no', $user->user_id_no)
                 ->select([
+                    'user_id_no',
                     'first_name',
                     'middle_name',
                     'last_name',
@@ -36,12 +40,23 @@ class DigitalIDController extends Controller
                 ->first();
         }
 
+        // 🔥 KEY IDEA: One token per user (persistent)
+        $token = Cache::rememberForever("user_qr_token:{$user->id}", function () use ($user) {
+
+            $newToken = Str::random(30);
+
+            // store reverse lookup
+            Cache::forever("qr:$newToken", $user->user_id_no);
+
+            return $newToken;
+        });
+
         return Inertia::render('Student/DigitalID/Index', [
             'studentData' => $studentData,
             'userInfoData' => $userInfoData,
             'userCreatedAt' => $userCreatedAt,
+            'qr_token' => $token,
         ]);
-
     }
 
     private function fetchStudentData($userIdNo, SisApiService $sisApi)
@@ -63,6 +78,7 @@ class DigitalIDController extends Controller
         }
 
         return [
+            'user_id_no' => $student['user_id_no'] ?? null,
             'first_name' => $student['first_name'] ?? null,
             'middle_name' => $student['middle_name'] ?? null,
             'last_name' => $student['last_name'] ?? null,

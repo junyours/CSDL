@@ -18,12 +18,14 @@
         "vite": "^7.0.7"
     },
     "dependencies": {
+        "@floating-ui/react": "^0.27.19",
         "@headlessui/react": "^2.2.9",
         "@heroicons/react": "^2.2.0",
         "@inertiajs/react": "^2.2.19",
         "@inertiajs/server": "^0.1.0",
         "@mapbox/mapbox-gl-draw": "^1.5.1",
         "@mapbox/mapbox-gl-geocoder": "^5.1.2",
+        "antd": "^6.3.6",
         "framer-motion": "^12.23.26",
         "html-to-image": "^1.11.13",
         "html2canvas": "^1.4.1",

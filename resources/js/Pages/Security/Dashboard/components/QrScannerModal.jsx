@@ -1,34 +1,24 @@
-import QrScanner from './QrScanner';
+import { Modal, Spin } from "antd";
+import QrScanner from "./QrScanner";
 
-export default function QrScannerModal({
-    open,
-    onClose,
-    onResult,
-    loading
-}) {
-    if (!open) return null;
-
+export default function QrScannerModal({ open, onClose, onResult, loading }) {
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center px-6 bg-black/50 backdrop-blur-sm">
-            <div className="relative w-full max-w-md bg-white rounded-lg shadow-xl p-6">
-
-                {/* Close Button */}
-                <button
-                    onClick={onClose}
-                    className="absolute top-3 right-3 text-gray-400 hover:text-gray-700"
-                >
-                    ✕
-                </button>
-
+        <Modal
+            title="Scan QR Code"
+            open={open}
+            onCancel={onClose}
+            footer={null}
+            destroyOnClose
+        >
+            <Spin spinning={loading}>
                 <QrScanner
                     active={open}
-                    loading={loading}
                     onResult={async (id) => {
                         await onResult(id);
-                        onClose(); // close scanner after scan
+                        onClose();
                     }}
                 />
-            </div>
-        </div>
+            </Spin>
+        </Modal>
     );
 }

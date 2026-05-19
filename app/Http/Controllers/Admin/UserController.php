@@ -3,14 +3,18 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\CampusClubUser;
 use App\Models\User;
 use App\Models\UserInformation;
+use App\Models\UserViolationRecord;
+use App\Models\Violation;
 use App\Services\SisApiService;
+use Illuminate\Support\Facades\Cache;
+
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Inertia\Inertia;
-use Illuminate\Support\Facades\Storage;
 use Str;
 
 class UserController extends Controller
@@ -32,12 +36,13 @@ class UserController extends Controller
                         ->orWhere('user_role', 'like', "%{$search}%");
                 });
             })
-           
+
             ->orderByRaw("
             CASE 
-                WHEN user_role = 'admin' THEN 1 
-                WHEN user_role = 'security' THEN 2 
-                WHEN user_role = 'student' THEN 3 
+                WHEN user_role = 'admin' THEN 1
+                WHEN user_role = 'guidance_counselor' THEN 2
+                WHEN user_role = 'security' THEN 3 
+                WHEN user_role = 'student' THEN 4 
                 ELSE 4 
             END ASC
         ")
@@ -51,7 +56,7 @@ class UserController extends Controller
                 'id' => $user->id,
                 'user_id_no' => $user->user_id_no,
                 'user_role' => $user->user_role,
-                'created_at' => $user->created_at->format('M d, Y'), // Bonus: Cleaner date for UI
+                'created_at' => $user->created_at
             ];
         });
 
@@ -62,6 +67,7 @@ class UserController extends Controller
             ],
         ]);
     }
+
 
     public function show(Request $request, $id, SisApiService $sisApi)
     {
@@ -84,18 +90,85 @@ class UserController extends Controller
         }
 
         $data = collect($response->json())->map(function ($student) {
-            // 1. Find the local user for the avatar
+
             $user = User::where('user_id_no', $student['user_id_no'])->first();
 
-            // 2. Filter the enrolled_students array to only include the current one
             $currentEnrollment = collect($student['enrolled_students'])->first(function ($enrollment) {
                 return data_get($enrollment, 'year_section.school_year.is_current') == 1;
             });
 
-            // 3. Attach the filtered enrollment and avatar to the student object
+            $violationsData = [];
+
+            if ($user) {
+
+                $records = UserViolationRecord::where('user_id', $user->id)
+                    ->where('status', 'unsettled')
+                    ->get();
+
+                $violationsData = $records->map(function ($record) {
+
+                    $ids = is_array($record->violation_ids)
+                        ? $record->violation_ids
+                        : json_decode($record->violation_ids, true);
+
+                    if (!is_array($ids)) {
+                        $ids = explode(',', $record->violation_ids);
+                    }
+
+                    $violations = Violation::whereIn('id', $ids)
+                        ->get(['id', 'violation_code']);
+
+                    return [
+                        'id' => $record->id,
+                        'reference_no' => $record->reference_no,
+                        'violations' => $violations,
+                        'issued_date_time' => $record->issued_date_time,
+                        'status' => $record->status
+                    ];
+                });
+            }
+
+            // CLUBS
+            $clubs = [];
+
+            if ($user) {
+
+                $clubs = CampusClubUser::with('club')
+                    ->where('user_id', $user->id)
+                    ->where('is_active', true)
+
+                    // ONLY ACTIVATED CLUBS
+                    ->whereHas('club', function ($query) {
+                        $query->where('status', 'Activated');
+                    })
+
+                    ->get()
+                    ->map(function ($clubUser) {
+
+                        return [
+                            'id' => $clubUser->id,
+                            'position' => $clubUser->position,
+                            'is_admin' => $clubUser->is_admin,
+
+                            'club' => [
+                                'id' => $clubUser->club?->id,
+                                'club_name' => $clubUser->club?->club_name,
+                                'club_logo_path' => $clubUser->club?->club_logo_path,
+                                'status' => $clubUser->club?->status,
+                            ]
+                        ];
+                    });
+            }
             $student['current_enrollment'] = $currentEnrollment;
+
+            unset($student['enrolled_students']);
+
             $student['avatar'] = $user ? $user->profile_photo : null;
             $student['created_at'] = $user ? $user->created_at : null;
+            $student['violation_records'] = $violationsData;
+
+            // ADD CLUBS
+            $student['clubs'] = $clubs;
 
             return $student;
         });
@@ -107,14 +180,30 @@ class UserController extends Controller
 
     public function getUserDetailsAPI(Request $request, SisApiService $sisApi)
     {
-        $userIdNos = $request->query('user_id_no', []);
+        $inputIds = $request->query('user_id_no', []);
 
-        if (is_string($userIdNos)) {
-            $userIdNos = [$userIdNos];
+        if (is_string($inputIds)) {
+            $inputIds = [$inputIds];
         }
 
-        if (empty($userIdNos)) {
+        if (empty($inputIds)) {
             return response()->json(['error' => 'user_id_no[] is required'], 400);
+        }
+
+        $userIdNos = collect($inputIds)->map(function ($value) {
+
+            if (preg_match('/^\d{4}-\d-\d{5}$/', $value)) {
+                return $value;
+            }
+
+            $resolved = Cache::get("qr:$value");
+
+            return $resolved ?: null; // null if invalid/expired
+
+        })->filter()->values()->toArray();
+
+        if (empty($userIdNos)) {
+            return response()->json(['error' => 'Invalid or expired QR / user_id_no'], 400);
         }
 
         $query = http_build_query([
@@ -140,14 +229,98 @@ class UserController extends Controller
 
             $user = $users->get($student['user_id_no']);
 
-            $student['user_exists'] = $user ? true : false;
+            $currentEnrollment = collect($student['enrolled_students'] ?? [])
+                ->first(
+                    fn($enrollment) =>
+                    data_get($enrollment, 'year_section.school_year.is_current') == 1
+                );
 
+            $hasViolationToday = false;
+
+            if ($user) {
+                $hasViolationToday = UserViolationRecord::where('user_id', $user->id)
+                    ->whereDate('issued_date_time', now())
+                    ->exists();
+            }
+
+            $student['enrolled_students'] = $currentEnrollment ? [$currentEnrollment] : [];
+            $student['current_enrollment'] = $currentEnrollment;
+            $student['user_exists'] = $user ? true : false;
             $student['avatar'] = $user ? $user->profile_photo : null;
+            $student['has_violation_today'] = $hasViolationToday;
 
             return $student;
         });
 
         return response()->json($data);
+    }
+
+    public function getStudentInformation(
+        Request $request,
+        SisApiService $sisApi
+    ) {
+
+        $userIdNos = $request->query('user_id_no', []);
+
+        if (is_string($userIdNos)) {
+            $userIdNos = [$userIdNos];
+        }
+
+        if (empty($userIdNos)) {
+            return response()->json([
+                'message' => 'No user_id_no provided'
+            ], 422);
+        }
+
+        $query = http_build_query([
+            'user_id_no' => $userIdNos
+        ]);
+
+        $response = $sisApi->get(
+            "/api/student-enrollment?{$query}"
+        );
+
+        if (!$response->ok()) {
+
+            return response()->json([
+                'message' => 'Failed to fetch student data'
+            ], 500);
+        }
+
+        $data = collect($response->json())->map(function ($student) {
+
+            $user = User::where(
+                'user_id_no',
+                $student['user_id_no']
+            )->first();
+
+            $currentEnrollment = collect(
+                $student['enrolled_students'] ?? []
+            )->first(function ($enrollment) {
+
+                return data_get(
+                    $enrollment,
+                    'year_section.school_year.is_current'
+                ) == 1;
+            });
+
+            return [
+                'user_id_no' => $student['user_id_no'] ?? null,
+
+                'full_name' => trim(
+                    ($student['first_name'] ?? '') . ' ' .
+                    ($student['last_name'] ?? '')
+                ),
+
+                'avatar' => $user?->profile_photo,
+
+                'current_enrollment' => $currentEnrollment,
+
+                'created_at' => $user?->created_at,
+            ];
+        });
+
+        return response()->json($data->values());
     }
 
     public function store(Request $request)
@@ -162,7 +335,7 @@ class UserController extends Controller
             'middle_name' => 'nullable|string|max:100',
             'last_name' => 'required|string|max:100',
             'email_address' => 'required|email|max:150|unique:user_information,email_address',
-            'user_role' => 'required|in:admin,security,student',
+            'user_role' => 'required',
         ]);
 
         DB::beginTransaction();

@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 
 export default function DigitalID({
     userIdNo = "0000-0-00000",
-    userProfilePhoto = "/assets/images/proper-profile-photo.jpg",
+    userProfilePhoto = "/assets/images/proper-profile-photo.png",
     studentData = null,
     userCreatedAt = null,
 }) {
@@ -37,14 +37,7 @@ export default function DigitalID({
                             rotateY: isFlipped ? 180 : 0
                         }}
                         // 3. The "Premium" Spring Physics
-                        transition={{
-                            type: "spring",
-                            stiffness: 120, // Lower = more "heavy"
-                            damping: 12,    // Lower = more "bounce"
-                            duration: 0.8,
-                            // Delay the entrance slightly so the page layout settles first
-                            delay: 0.2
-                        }}
+                        transition={{ type: "spring", stiffness: 100, damping: 15 }}
                         style={{ transformStyle: "preserve-3d" }}
                         className="relative w-full h-full rounded-[14px] shadow-[0_0_20px_3px_rgba(0,0,0,0.3)]"
                     >
@@ -87,7 +80,7 @@ export default function DigitalID({
                                         />
                                     </div>
                                     <p className="text-[6px] mt-1 font-bold text-center leading-none text-gray-500 uppercase">IDENTIFICATION NUMBER</p>
-                                    <p className="text-[11px] font-mono font-bold bg-yellow-50 border border-yellow-200 px-1 mt-1 text-blue-800">{userIdNo}</p>
+                                    <p className="text-[11px] font-mono font-bold bg-yellow-50 border border-yellow-200 px-1 mt-1 text-blue-800">{studentData?.user_id_no}</p>
                                 </div>
 
                                 <div className="w-2/3 text-[9px] flex flex-col pt-1">
@@ -141,7 +134,9 @@ export default function DigitalID({
 
                         {/* BACK SIDE */}
                         <div
-                            className="absolute inset-0 w-full h-full rounded-xl shadow-xl overflow-hidden bg-gradient-to-br from-[#0f172a] to-[#1e3a8a] text-white flex flex-col items-center justify-center p-6 transition-opacity duration-200"
+                            className="absolute inset-0 w-full h-full rounded-xl shadow-xl overflow-hidden 
+               bg-gradient-to-br from-[#0f172a] to-[#1e3a8a] 
+               flex items-center justify-center gap-6 p-6"
                             style={{
                                 backfaceVisibility: "hidden",
                                 WebkitBackfaceVisibility: "hidden",
@@ -150,28 +145,53 @@ export default function DigitalID({
                                 pointerEvents: isFlipped ? "auto" : "none"
                             }}
                         >
-                            <div className="bg-white p-2 rounded-lg shadow-lg">
-                                <QRCodeCanvas
-                                    value={userIdNo}
-                                    size={130}
-                                    level="H"
-                                    imageSettings={{
-                                        src: "/assets/images/school-logo.png",
-                                        height: 40,
-                                        width: 40,
-                                    }}
-                                />
-                            </div>
+                            <img
+                                src="/assets/images/darkMode-csdl-logo.png"
+                                alt="bg"
+                                className="absolute inset-0 w-full h-full object-contain opacity-10 pointer-events-none select-none"
+                            />
 
-                            <div className="mt-4 text-center">
-                                <p className="text-[7px] text-blue-300 tracking-widest uppercase">IDENTIFICATION NUMBER</p>
-                                <p className="font-mono text-[15px] font-bold tracking-wider">{userIdNo}</p>
+                            {/* CONTENT (stays fully visible) */}
+                            <div className="relative z-10 flex items-center gap-6">
+
+                                {/* PROFILE PHOTO */}
+                                <div className="flex flex-col items-center">
+                                    <div className="w-28 h-28 border border-white/30 overflow-hidden bg-gray-200 flex-shrink-0">
+                                        <img
+                                            src={
+                                                userProfilePhoto.startsWith("profile-photos/")
+                                                    ? `/storage/${userProfilePhoto}`
+                                                    : `https://lh3.googleusercontent.com/d/${userProfilePhoto}`
+                                            }
+                                            alt="user"
+                                            className="w-full h-full object-cover"
+                                        />
+                                    </div>
+
+                                    <p className="text-[11px] font-mono font-bold bg-yellow-50 border border-yellow-200 px-1 mt-1 text-blue-800">{studentData?.user_id_no}</p>
+
+                                </div>
+
+                                {/* QR CODE */}
+                                <div className="bg-white p-2 shadow-md">
+                                    <QRCodeCanvas
+                                        value={userIdNo}
+                                        size={190}
+                                        level="H"
+                                        imageSettings={{
+                                            src: "/assets/images/school-logo.png",
+                                            height: 45,
+                                            width: 45,
+                                            excavate: true
+                                        }}
+                                    />
+                                </div>
                             </div>
                         </div>
                     </motion.div>
                 </div>
             </div>
-            <p className="mt-24 md:mt-4 text-black text-[10px] text-center font-medium uppercase tracking-widest">
+            <p className="mt-24 md:mt-4 text-[10px] text-center font-medium uppercase tracking-widest">
                 {isFlipped ? "Tap to show front" : "Tap to show back"}
             </p>
         </div>

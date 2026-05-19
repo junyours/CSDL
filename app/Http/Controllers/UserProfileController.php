@@ -104,14 +104,6 @@ class UserProfileController extends Controller
 
         $user = auth()->user();
 
-        // Delete old photo if exists
-        // if ($user->profile_photo && Storage::disk('public')->exists($user->profile_photo)) {
-        //     Storage::disk('public')->delete($user->profile_photo);
-        // }
-
-        // Store new photo
-        // $path = $request->file('avatar')->store('profile-photos', 'public');
-
         $accessToken = $this->token();
 
         $folderId = $this->getOrCreateFolder($accessToken, 'UserProfile', config('services.google.folder_id'));

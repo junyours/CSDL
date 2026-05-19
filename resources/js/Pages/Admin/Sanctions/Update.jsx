@@ -1,58 +1,68 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import axios from "axios";
-import toast from "react-hot-toast";
-import { TrashIcon } from "@heroicons/react/24/outline";
+import {
+    Form,
+    Input,
+    Select,
+    InputNumber,
+    Button,
+    Switch,
+    message,
+    Space,
+    Alert,
+    Divider,
+} from "antd";
 
 export default function Update({ sanction, onSuccess }) {
-    const [data, setData] = useState({
-        sanction_type: "",
-        sanction_name: "",
-        sanction_description: "",
-        monetary_amount: "",
-        service_time: "",
-        service_time_type: "",
-        status: true,
-    });
-
-    const [errors, setErrors] = useState({});
+    const [form] = Form.useForm();
     const [processing, setProcessing] = useState(false);
+    const [sanctionType, setSanctionType] = useState("");
 
-    // Prefill
+    // Prefill form
     useEffect(() => {
         if (sanction) {
-            setData({
+            form.setFieldsValue({
                 sanction_type: sanction.sanction_type,
-                sanction_name: sanction.sanction_name,
+                sanction_name: sanction.sanction_name || "",
                 sanction_description: sanction.sanction_description || "",
-                monetary_amount: sanction.monetary_amount || "",
-                service_time: sanction.service_time || "",
+                monetary_amount: sanction.monetary_amount || null,
+                service_time: sanction.service_time || null,
                 service_time_type: sanction.service_time_type || "",
-                status: !!sanction.status,
+                status: sanction.status === 1,
             });
+
+            setSanctionType(sanction.sanction_type);
         }
-    }, [sanction]);
+    }, [sanction, form]);
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
+    const handleSubmit = async (values) => {
         setProcessing(true);
-        setErrors({});
-
-        const updateUrl = `/setup/sanction/${sanction.id}`;
-
-        const promise = axios.patch(updateUrl, data);
-
-        toast.promise(promise, {
-            loading: "Updating sanction...",
-            success: "Sanction updated successfully!",
-            error: "Failed to update sanction",
-        });
 
         try {
-            await promise;
-            onSuccess?.(); // close modal + refresh
+            const payload = {
+                ...values,
+                status: values.status ? 1 : 0,
+            };
+
+            await axios.patch(`/setup/sanction/${sanction.id}`, payload);
+
+            message.success("Sanction updated successfully!");
+
+            onSuccess?.();
+
         } catch (error) {
             if (error.response?.status === 422) {
-                setErrors(error.response.data.errors);
+                const serverErrors = error.response.data.errors;
+
+                const formatted = Object.keys(serverErrors).map((key) => ({
+                    name: key,
+                    errors: [serverErrors[key][0]],
+                }));
+
+                form.setFields(formatted);
+            } else {
+                message.error("Failed to update sanction");
+                console.error(error);
             }
         } finally {
             setProcessing(false);
@@ -60,148 +70,134 @@ export default function Update({ sanction, onSuccess }) {
     };
 
     return (
-        <form onSubmit={handleSubmit} className="space-y-6">
-
-            {/* SANCTION TYPE */}
-            <div>
-                <label className="block text-sm font-medium mb-1.5">Sanction Type</label>
-                <select
-                    value={data.sanction_type}
-                    onChange={e => setData({ ...data, sanction_type: e.target.value })}
-                    className="w-full px-3 py-2 border rounded-lg"
-                >
-                    <option value="">Select type</option>
-                    <option value="monetary">Monetary</option>
-                    <option value="service">Service</option>
-                </select>
-                {errors.sanction_type && <p className="text-red-600 text-sm">{errors.sanction_type[0]}</p>}
-            </div>
+        <Form
+            form={form}
+            layout="vertical"
+            onFinish={handleSubmit}
+        >
+            {/* TYPE */}
+            <Form.Item
+                label="Sanction Type"
+                name="sanction_type"
+                rules={[{ required: true, message: "Sanction type is required" }]}
+            >
+                <Select
+                    placeholder="Select type"
+                    onChange={(value) => setSanctionType(value)}
+                    options={[
+                        { value: "monetary", label: "Monetary" },
+                        { value: "service", label: "Service" },
+                    ]}
+                />
+            </Form.Item>
 
             {/* NAME */}
-            <div>
-                <label className="block text-sm font-medium mb-1.5">Sanction Name</label>
-                <input
-                    type="text"
-                    value={data.sanction_name}
-                    onChange={e => setData({ ...data, sanction_name: e.target.value })}
-                    className="w-full uppercase placeholder:normal-case px-3 py-2 border rounded-lg"
-                />
-                {errors.sanction_name && <p className="text-red-600 text-sm">{errors.sanction_name[0]}</p>}
-            </div>
+            <Form.Item
+                label="Sanction Name"
+                name="sanction_name"
+                rules={[{ required: true, message: "Sanction name is required" }]}
+            >
+                <Input style={{ textTransform: "uppercase" }} />
+            </Form.Item>
 
             {/* DESCRIPTION */}
-            <div>
-                <label className="block text-sm font-medium mb-1.5">Description</label>
-                <textarea
-                    rows={4}
-                    value={data.sanction_description}
-                    onChange={e => setData({ ...data, sanction_description: e.target.value })}
-                    className="w-full px-3 py-2 border rounded-lg"
-                />
-                {errors.sanction_description && (
-                    <p className="text-red-600 text-sm">{errors.sanction_description[0]}</p>
-                )}
-            </div>
+            <Form.Item
+                label="Description"
+                name="sanction_description"
+            >
+                <Input.TextArea rows={4} />
+            </Form.Item>
 
-            {/* MONETARY FIELDS */}
-            {data.sanction_type === "monetary" && (
-                <div>
-                    <label className="block text-sm font-medium mb-1.5">Monetary Amount</label>
-                    <input
-                        type="number"
-                        value={data.monetary_amount}
-                        onChange={e => setData({ ...data, monetary_amount: e.target.value })}
-                        className="w-full px-3 py-2 border rounded-lg"
-                    />
-                    {errors.monetary_amount && (
-                        <p className="text-red-600 text-sm">{errors.monetary_amount[0]}</p>
-                    )}
-                </div>
+            {/* MONETARY */}
+            {sanctionType === "monetary" && (
+                <Form.Item
+                    label="Monetary Amount"
+                    name="monetary_amount"
+                    rules={[{ required: true, message: "Amount is required" }]}
+                >
+                    <InputNumber style={{ width: "100%" }} min={0} />
+                </Form.Item>
             )}
 
-            {/* SERVICE FIELDS */}
-            {data.sanction_type === "service" && (
+            {/* SERVICE */}
+            {sanctionType === "service" && (
                 <>
-                    <div>
-                        <label className="block text-sm font-medium mb-1.5">Service Time</label>
-                        <input
-                            type="number"
-                            value={data.service_time}
-                            onChange={e => setData({ ...data, service_time: e.target.value })}
-                            className="w-full px-3 py-2 border rounded-lg"
+                    <Form.Item
+                        label="Service Time"
+                        name="service_time"
+                        rules={[{ required: true, message: "Service time is required" }]}
+                    >
+                        <InputNumber style={{ width: "100%" }} min={0} />
+                    </Form.Item>
+
+                    <Form.Item
+                        label="Time Type"
+                        name="service_time_type"
+                        rules={[{ required: true, message: "Time type is required" }]}
+                    >
+                        <Select
+                            options={[
+                                { value: "minutes", label: "Minutes" },
+                                { value: "hours", label: "Hours" },
+                            ]}
                         />
-                        {errors.service_time && (
-                            <p className="text-red-600 text-sm">{errors.service_time[0]}</p>
-                        )}
-                    </div>
-
-                    <div>
-                        <label className="block text-sm font-medium mb-1.5">Time Type</label>
-                        <select
-                            value={data.service_time_type}
-                            onChange={e => setData({ ...data, service_time_type: e.target.value })}
-                            className="w-full px-3 py-2 border rounded-lg"
-                        >
-                            <option value="">Select type</option>
-                            <option value="minutes">Minutes</option>
-                            <option value="hours">Hours</option>
-                        </select>
-
-                        {errors.service_time_type && (
-                            <p className="text-red-600 text-sm">{errors.service_time_type[0]}</p>
-                        )}
-                    </div>
+                    </Form.Item>
                 </>
             )}
 
-            <div
-                className={`flex flex-col gap-1 transition-all ${data.status === 0 ? "border border-red-500 rounded-lg p-2" : ""
-                    }`}
-            >
-                <div className="flex items-center justify-between">
+            <Divider />
 
-                    {/* Icon + Text */}
-                    <div className="flex items-center gap-2">
-                        <TrashIcon className="h-5 w-5 text-red-600" />
-
-                        <div className="flex flex-col justify-center">
-                            <label htmlFor="status" className="text-sm font-medium text-gray-700">
+            {/* STATUS */}
+            <Form.Item name="status" valuePropName="checked">
+                <div>
+                    <Space
+                        align="center"
+                        style={{ width: "100%", justifyContent: "space-between" }}
+                    >
+                        <div>
+                            <div style={{ fontWeight: 500 }}>
                                 Move to bin
-                            </label>
-                            <p className="text-xs text-gray-500">
-                                This action cannot be undone.
-                            </p>
+                            </div>
+                            <div style={{ fontSize: 12, color: "#888" }}>
+                                This action cannot be undone
+                            </div>
                         </div>
-                    </div>
 
-                    {/* Toggle */}
-                    <label className="relative inline-flex items-center cursor-pointer">
-                        <input
-                            id="status"
-                            type="checkbox"
-                            checked={data.status === 0}
-                            onChange={(e) =>
-                                setData({
-                                    ...data,
-                                    status: e.target.checked ? 0 : 1,
-                                })
-                            }
-                            className="sr-only peer"
-                        />
-                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-red-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-red-600"></div>
-                    </label>
+                        <Form.Item name="status" valuePropName="checked" noStyle>
+                            <Switch
+                                checkedChildren="Delete"
+                                unCheckedChildren="Undo"
+                            />
+                        </Form.Item>
+                    </Space>
 
+                    {/* Warning */}
+                    <Form.Item shouldUpdate noStyle>
+                        {({ getFieldValue }) =>
+                            !getFieldValue("status") && (
+                                <Alert
+                                    type="warning"
+                                    showIcon
+                                    message="This sanction will be marked as inactive"
+                                    style={{ marginTop: 12 }}
+                                />
+                            )
+                        }
+                    </Form.Item>
                 </div>
-            </div>
+            </Form.Item>
 
-
-            <button
-                type="submit"
-                disabled={processing}
-                className="w-full px-4 py-2.5 text-white bg-blue-600 rounded-lg"
-            >
-                {processing ? "Updating..." : "Update Sanction"}
-            </button>
-        </form>
+            {/* SUBMIT */}
+            <Form.Item>
+                <Button
+                    type="primary"
+                    htmlType="submit"
+                    loading={processing}
+                    block
+                >
+                    Update
+                </Button>
+            </Form.Item>
+        </Form>
     );
 }
