@@ -186,7 +186,16 @@
                     </div>
                 </td>
 
-                <td></td>
+                <td>
+                    <div class="label">Academic Year</div>
+                    <div class="value">
+                        {{ data_get($student, 'current_enrollment.year_section.school_year.start_year', '-') }}
+                        -
+                        {{ data_get($student, 'current_enrollment.year_section.school_year.end_year', '-') }}
+
+                        {{ data_get($student, 'current_enrollment.year_section.school_year.semester.semester_name', '-') }} (Semester)
+                    </div>
+                </td>
             </tr>
         </table>
     </div>
@@ -202,7 +211,7 @@
         <thead>
             <tr>
                 <th width="15%">Ref #</th>
-                <th width="20%">Date</th>
+                <th width="20%">Date & Time</th>
                 <th width="35%">Violations</th>
                 <th width="30%">Sanction</th>
             </tr>

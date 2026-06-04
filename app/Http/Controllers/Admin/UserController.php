@@ -93,9 +93,9 @@ class UserController extends Controller
 
             $user = User::where('user_id_no', $student['user_id_no'])->first();
 
-            $currentEnrollment = collect($student['enrolled_students'])->first(function ($enrollment) {
-                return data_get($enrollment, 'year_section.school_year.is_current') == 1;
-            });
+            $currentEnrollment = collect($student['enrolled_students'] ?? [])
+                ->sortByDesc('id')
+                ->first();
 
             $violationsData = [];
 

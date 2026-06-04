@@ -423,9 +423,9 @@ class UserViolationRecordController extends Controller
 
         $enrollments = collect($student['enrolled_students'] ?? []);
 
-        $currentEnrollment = $enrollments->first(function ($enrollment) {
-            return data_get($enrollment, 'year_section.school_year.is_current') == 1;
-        });
+        $currentEnrollment = $enrollments
+            ->sortByDesc('id')
+            ->first();
 
         return [
             'first_name' => $student['first_name'] ?? null,

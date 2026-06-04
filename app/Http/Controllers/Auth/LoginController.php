@@ -55,20 +55,20 @@ class LoginController extends Controller
 
             $student = $students->first();
 
-            $enrolledCurrent = collect($student['enrolled_students'] ?? [])
-                ->contains(function ($enroll) {
-                    return data_get($enroll, 'year_section.school_year.is_current') == 1;
-                });
+            // $enrolledCurrent = collect($student['enrolled_students'] ?? [])
+            //     ->contains(function ($enroll) {
+            //         return data_get($enroll, 'year_section.school_year.is_current') == 1;
+            //     });
 
-            if (!$enrolledCurrent) {
-                Auth::logout();
+            // if (!$enrolledCurrent) {
+            //     Auth::logout();
 
-                return response()->json([
-                    'errors' => [
-                        'user_id_no' => ['You are not enrolled in the current school year.']
-                    ]
-                ], 403);
-            }
+            //     return response()->json([
+            //         'errors' => [
+            //             'user_id_no' => ['You are not enrolled in the current school year.']
+            //         ]
+            //     ], 403);
+            // }
         }
 
         $redirect = match ($user->user_role) {
@@ -182,18 +182,18 @@ class LoginController extends Controller
             ], 422);
         }
 
-        $enrolledCurrent = collect($student['enrolled_students'] ?? [])
-            ->contains(function ($enroll) {
-                return ($enroll['year_section']['school_year']['is_current'] ?? 0) == 1;
-            });
+        // $enrolledCurrent = collect($student['enrolled_students'] ?? [])
+        //     ->contains(function ($enroll) {
+        //         return ($enroll['year_section']['school_year']['is_current'] ?? 0) == 1;
+        //     });
 
-        if (!$enrolledCurrent) {
-            return response()->json([
-                'errors' => [
-                    'user_id_no' => ['Student is not enrolled in the current school year.']
-                ]
-            ], 422);
-        }
+        // if (!$enrolledCurrent) {
+        //     return response()->json([
+        //         'errors' => [
+        //             'user_id_no' => ['Student is not enrolled in the current school year.']
+        //         ]
+        //     ], 422);
+        // }
 
         try {
             $user = User::create([
