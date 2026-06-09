@@ -17,6 +17,8 @@ class User extends Authenticatable
         'face_enrolled',
         'profile_photo',
         'remember_token',
+        'email',
+        'last_password_reset_request_at',
     ];
 
     protected $hidden = [

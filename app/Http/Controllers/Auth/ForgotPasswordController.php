@@ -3,7 +3,9 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Password;
 use Inertia\Inertia;
 use App\Models\User;
@@ -71,65 +73,103 @@ class ForgotPasswordController extends Controller
     }
 
     // Step 2: send reset link
-    // public function sendResetLink(Request $request)
-    // {
-    //     $request->validate([
-    //         'user_id_no' => 'required|string',
-    //     ]);
-
-    //     // Find user locally
-    //     $user = User::where('user_id_no', $request->user_id_no)->first();
-
-    //     if (!$user) {
-    //         return response()->json([
-    //             'errors' => ['user_id_no' => ['User not found.']]
-    //         ], 422);
-    //     }
-
-    //     // Make sure user has email
-    //     if (empty($user->email)) {
-    //         return response()->json([
-    //             'errors' => ['email' => ['No email found for this user.']]
-    //         ], 422);
-    //     }
-
-    //     // Send reset link directly
-    //     $status = Password::sendResetLink([
-    //         'email' => $user->email
-    //     ]);
-
-    //     return $status === Password::RESET_LINK_SENT
-    //         ? response()->json([
-    //             'message' => __($status),
-    //             'email' => $user->email
-    //         ])
-    //         : response()->json([
-    //             'errors' => ['email' => [__($status)]]
-    //         ], 422);
-    // }
-
     public function sendResetLink(Request $request)
     {
         $request->validate([
             'user_id_no' => 'required|string',
         ]);
 
+        // Find user locally
         $user = User::where('user_id_no', $request->user_id_no)->first();
 
-        if (!$user || empty($user->email)) {
+        if (!$user) {
             return response()->json([
-                'errors' => ['user_id_no' => ['User account or email not valid.']]
+                'errors' => [
+                    'user_id_no' => ['User not found.']
+                ]
             ], 422);
         }
 
-        // Generate secure token in password_reset_tokens table bypassed from standard mailer
-        $token = Password::getRepository()->create($user);
+        // Make sure user has email
+        if (empty($user->email)) {
+            return response()->json([
+                'errors' => [
+                    'email' => ['No email found for this user.']
+                ]
+            ], 422);
+        }
+
+        // Enforce 24-hour cooldown
+        if ($user->last_password_reset_request_at) {
+
+            $nextAllowedRequest = Carbon::parse(
+                $user->last_password_reset_request_at
+            )->addHours(24);
+
+            if (now()->lt($nextAllowedRequest)) {
+
+                $minutesRemaining = now()->diffInMinutes(
+                    $nextAllowedRequest
+                );
+
+                $hours = floor($minutesRemaining / 60);
+                $minutes = $minutesRemaining % 60;
+
+                return response()->json([
+                    'message' =>
+                        "You have already requested a password reset. Please try again in {$hours}h {$minutes}m."
+                ], 429);
+            }
+        }
+
+        // Send reset link
+        $status = Password::sendResetLink([
+            'email' => $user->email,
+        ]);
+
+        if ($status === Password::RESET_LINK_SENT) {
+
+            // Save timestamp of successful request
+            $user->update([
+                'last_password_reset_request_at' => now(),
+            ]);
+
+            return response()->json([
+                'message' => 'Password reset link sent successfully.',
+                'email' => $user->email,
+            ]);
+        }
 
         return response()->json([
-            'email' => $user->email,
-            'token' => $token,
-        ]);
+            'errors' => [
+                'email' => [__($status)]
+            ]
+        ], 422);
     }
+
+    // public function sendResetLink(Request $request)
+    // {
+    //     $request->validate([
+    //         'user_id_no' => 'required|string',
+    //     ]);
+
+    //     $user = User::where('user_id_no', $request->user_id_no)->first();
+
+    //     if (!$user || empty($user->email)) {
+    //         return response()->json([
+    //             'errors' => ['user_id_no' => ['User account or email not valid.']]
+    //         ], 422);
+    //     }
+
+    //     // Generate secure token in password_reset_tokens table bypassed from standard mailer
+    //     $token = Password::getRepository()->create($user);
+
+    //     return response()->json([
+    //         'email' => $user->email,
+    //         'token' => $token,
+    //     ]);
+    // }
+
 
     private function fetchStudentData($userIdNo, SisApiService $sisApi)
     {
