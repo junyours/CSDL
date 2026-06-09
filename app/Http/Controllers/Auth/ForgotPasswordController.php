@@ -71,41 +71,64 @@ class ForgotPasswordController extends Controller
     }
 
     // Step 2: send reset link
+    // public function sendResetLink(Request $request)
+    // {
+    //     $request->validate([
+    //         'user_id_no' => 'required|string',
+    //     ]);
+
+    //     // Find user locally
+    //     $user = User::where('user_id_no', $request->user_id_no)->first();
+
+    //     if (!$user) {
+    //         return response()->json([
+    //             'errors' => ['user_id_no' => ['User not found.']]
+    //         ], 422);
+    //     }
+
+    //     // Make sure user has email
+    //     if (empty($user->email)) {
+    //         return response()->json([
+    //             'errors' => ['email' => ['No email found for this user.']]
+    //         ], 422);
+    //     }
+
+    //     // Send reset link directly
+    //     $status = Password::sendResetLink([
+    //         'email' => $user->email
+    //     ]);
+
+    //     return $status === Password::RESET_LINK_SENT
+    //         ? response()->json([
+    //             'message' => __($status),
+    //             'email' => $user->email
+    //         ])
+    //         : response()->json([
+    //             'errors' => ['email' => [__($status)]]
+    //         ], 422);
+    // }
+
     public function sendResetLink(Request $request)
     {
         $request->validate([
             'user_id_no' => 'required|string',
         ]);
 
-        // Find user locally
         $user = User::where('user_id_no', $request->user_id_no)->first();
 
-        if (!$user) {
+        if (!$user || empty($user->email)) {
             return response()->json([
-                'errors' => ['user_id_no' => ['User not found.']]
+                'errors' => ['user_id_no' => ['User account or email not valid.']]
             ], 422);
         }
 
-        // Make sure user has email
-        if (empty($user->email)) {
-            return response()->json([
-                'errors' => ['email' => ['No email found for this user.']]
-            ], 422);
-        }
+        // Generate secure token in password_reset_tokens table bypassed from standard mailer
+        $token = Password::getRepository()->create($user);
 
-        // Send reset link directly
-        $status = Password::sendResetLink([
-            'email' => $user->email
+        return response()->json([
+            'email' => $user->email,
+            'token' => $token,
         ]);
-
-        return $status === Password::RESET_LINK_SENT
-            ? response()->json([
-                'message' => __($status),
-                'email' => $user->email
-            ])
-            : response()->json([
-                'errors' => ['email' => [__($status)]]
-            ], 422);
     }
 
     private function fetchStudentData($userIdNo, SisApiService $sisApi)
