@@ -22,7 +22,7 @@ import { useTheme } from "../../ThemeContext";
 
 const { Title, Text } = Typography;
 
-export default function ResetPassword({ token, email }) {
+export default function ResetPassword({ token, email, tokenValid }) {
   const [form] = Form.useForm();
   const [processing, setProcessing] = useState(false);
 
@@ -64,6 +64,38 @@ export default function ResetPassword({ token, email }) {
       setProcessing(false);
     }
   };
+
+
+  if (!tokenValid) {
+    return (
+      <div
+        style={{
+          minHeight: "100vh",
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+        }}
+      >
+        <Card style={{ width: 450 }}>
+          <Title level={4}>Reset Link Expired</Title>
+
+          <Text type="secondary">
+            This password reset link is no longer valid.
+            Please request a new password reset link.
+          </Text>
+
+          <Button
+            type="primary"
+            block
+            style={{ marginTop: 20 }}
+            href="/forgot-password"
+          >
+            Request New Link
+          </Button>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <ConfigProvider
